@@ -1,0 +1,31 @@
+[package]
+name = "confido"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+az-cvm-vtpm = "0.5.3"
+az-snp-vtpm = { path = "../../azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm" }
+openssl.workspace = true
+serde = "1.0"
+serde_json = "1.0"
+rand = "0.8.4"
+base64 = "0.13.0"
+tokio = { version = "1.38.0", features = ["full"] }
+anyhow = "1.0"
+actix-web = "4.0.0-beta.8" 
+env_logger = "0.9"
+log = "0.4"
+rustls = "0.19.0"
+webpki = "0.21.4"
+rcgen = "0.8.10"
+reqwest = { version = "0.12.4", features = ["json", "native-tls", "blocking"] }
+native-tls = "0.2.12"
+pyo3 = { version = "0.20.0", features = ["extension-module"] }
+pyo3-asyncio = { version = "0.20.0", features = ["tokio"] }
+
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
