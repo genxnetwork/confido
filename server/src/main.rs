@@ -33,7 +33,7 @@ impl Attester {
 }
 
 async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>) -> impl Responder {
-    info!("Received attestation reques");
+    info!("Received attestation request");
     let mut nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
         Err(e) => {
