@@ -1,40 +1,16 @@
 use az_snp_vtpm::certs::Vcek;
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::{AttestationReport, Validateable};
-use az_snp_vtpm::{amd_kds, imds, vtpm};
 use openssl::pkey::PKey;
+use az_snp_vtpm::{amd_kds, imds, vtpm};
 use serde::{Serialize, Deserialize};
 use rand::Rng;
-use base64;
-use std::fmt;
 use std::fmt::Debug;
 use log::{info, debug, error};
 use openssl::x509::X509;
 use std::error::Error;
-use pyo3::pyclass;
-
-#[derive(Debug)]
-struct CustomError {
-    details: String
-}
-
-impl CustomError {
-    fn new(msg: &str) -> CustomError {
-        CustomError{details: msg.to_string()}
-    }
-}
-
-impl fmt::Display for CustomError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.details)
-    }
-}
-
-impl Error for CustomError {
-    fn description(&self) -> &str {
-        &self.details
-    }
-}
+// use pyo3::pyclass;
+// use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Evidence {
@@ -43,19 +19,9 @@ pub struct Evidence {
     certs: imds::Certificates,
 }
 
-pub struct Attester;
-
-impl Attester {
-    pub fn gather_evidence(nonce: &Nonce) -> Result<Evidence, Box<dyn Error>> {
-        let report = vtpm::get_report()?;
-        let quote = vtpm::get_quote(nonce.as_bytes())?;
-        let certs = imds::get_certs()?;
-
-        Ok(Evidence {
-            report,
-            quote,
-            certs,
-        })
+impl Evidence {
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote, certs: imds::Certificates) -> Self {
+        Evidence {report, quote, certs}
     }
 }
 
@@ -78,7 +44,7 @@ impl Verifier {
         snp_report.validate(&vcek)?;
     
         if var_data_hash != snp_report.report_data[..32] {
-            return Err(Box::new(CustomError::new("var_data_hash mismatch")));
+            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "var_data_hash mismatch")));
         }
         let der = ak_pub.key.try_to_der()?;
         let pub_key = PKey::public_key_from_der(&der)?;
@@ -141,6 +107,10 @@ impl Nonce {
     pub fn as_bytes(&self) -> &Vec<u8> {
         &self.nonce
     }
+
+    pub fn as_string(&self) -> String {
+        base64::encode(&self.nonce)
+    }
 }
 
 impl Into<Base64> for Nonce {
@@ -161,9 +131,8 @@ pub struct AttestationResponse {
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
 }
 
-#[pyclass]
 pub struct ATLS {
-    certificate: X509,
+    // certificate: X509, read once from server and initilised into http client
     http_client: reqwest::Client,
 }
 
@@ -173,7 +142,7 @@ impl ATLS {
         let request = AttestationRequest {
             nonce: nonce.clone().into(),
         };
-        debug!("nonce: {:?}", nonce.as_bytes());
+        debug!("nonce: {:?}", nonce.as_string());
         let client = reqwest::Client::new();
         let url = format!("{}/aTLS", host);
         info!("Connecting to {} to gather evidence", url);
@@ -183,7 +152,7 @@ impl ATLS {
             .await?;
 
         let body = res.text().await?;
-        debug!("response body: {:#?}", body);
+        // debug!("response body: {:#?}", body);
         
         let result: Result<AttestationResponse, _> = serde_json::from_str(&body);
         let response = result.map_err(|err| {
@@ -191,8 +160,8 @@ impl ATLS {
             Box::new(err)
         })?;
         info!("aTLS response successfuly received");
-        debug!("{:#?}", response.evidence);
-        debug!("{:#?}", response.certificate);
+        // debug!("{:#?}", response.evidence);
+        // debug!("{:#?}", response.certificate);
         
         Verifier::verify(nonce.extend(&X509::from_pem(&response.certificate).unwrap()), &response.evidence)
             .map_err(|e| {
@@ -213,7 +182,6 @@ impl ATLS {
             .build()?;
         
         Ok(ATLS {
-            certificate: certificate,
             http_client: http_client
         })
     }

@@ -3,15 +3,17 @@ name = "confido_server"
 version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "confido_server"
+path = "src/main.rs"
 
 [dependencies]
 confido = { path = "../lib" }
-openssl.workspace = true
+az-snp-vtpm = { path = "../../azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm", features = ["attester"] }
+openssl = "0.10"
 serde = "1.0"
 serde_json = "1.0"
 log = "0.4"
-
 base64 = "0.13.0"
 env_logger = "0.9"
 tokio = { version = "1", features = ["full"] }
