@@ -109,6 +109,8 @@ fn generate_certificate() -> Result<(X509, PKey<Private>), openssl::error::Error
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
+    println!("{:?}", Nonce::generate().as_string());
+
     let matches = clap::App::new("Confido aTLS Server")
         .version("0.1.0")
         .about("A server that generates and provides TEE-backed TLS certificates")

@@ -136,45 +136,52 @@ pub struct ATLS {
     http_client: reqwest::Client,
 }
 
+pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
+    env_logger::init();
+    info!("fn aTLS_connect: {:?}", host.to_string());
+    let mut nonce: Nonce = Nonce::generate();
+    let request = AttestationRequest {
+        nonce: nonce.clone().into(),
+    };
+    info!("nonce: {:?}", nonce.as_string());
+    let client = reqwest::Client::new();
+    let url = format!("{}/aTLS", host);
+    info!("Connecting to {} to gather evidence", url);
+    let res = client.post(url)
+        .json(&serde_json::json!(request))
+        .send()
+        .await?;
+
+    let body = res.text().await?;
+    // debug!("response body: {:#?}", body);
+
+    let result: Result<AttestationResponse, _> = serde_json::from_str(&body);
+    let response = result.map_err(|err| {
+        error!("Failed to deserialize JSON: {}", err);
+        Box::new(err)
+    })?;
+    info!("aTLS response successfuly received");
+    // debug!("{:#?}", response.evidence);
+    // debug!("{:#?}", response.certificate);
+
+    Verifier::verify(nonce.extend(&X509::from_pem(&response.certificate).unwrap()), &response.evidence)
+        .map_err(|e| {
+            error!("Failed to verify evidence: {}", e);
+            e as Box<dyn std::error::Error>
+        })?;
+
+    let certificate = X509::from_pem(&response.certificate).map_err(|e| {
+        error!("Failed to parse aTLS certificate: {}", e);
+        Box::new(e)
+    })?;
+    info!("aTLS certificate verification successful");
+
+    Ok(certificate)
+}
+
 impl ATLS {
     pub async fn connect(host: &str) -> Result<ATLS, Box<dyn Error>> {
-        let mut nonce: Nonce = Nonce::generate();
-        let request = AttestationRequest {
-            nonce: nonce.clone().into(),
-        };
-        debug!("nonce: {:?}", nonce.as_string());
-        let client = reqwest::Client::new();
-        let url = format!("{}/aTLS", host);
-        info!("Connecting to {} to gather evidence", url);
-        let res = client.post(url)
-            .json(&serde_json::json!(request))
-            .send()
-            .await?;
-
-        let body = res.text().await?;
-        // debug!("response body: {:#?}", body);
-        
-        let result: Result<AttestationResponse, _> = serde_json::from_str(&body);
-        let response = result.map_err(|err| {
-            error!("Failed to deserialize JSON: {}", err);
-            Box::new(err)
-        })?;
-        info!("aTLS response successfuly received");
-        // debug!("{:#?}", response.evidence);
-        // debug!("{:#?}", response.certificate);
-        
-        Verifier::verify(nonce.extend(&X509::from_pem(&response.certificate).unwrap()), &response.evidence)
-            .map_err(|e| {
-                error!("Failed to verify evidence: {}", e);
-                e as Box<dyn std::error::Error>
-            })?;
-        
-        let certificate = X509::from_pem(&response.certificate).map_err(|e| {
-            error!("Failed to parse aTLS certificate: {}", e);
-            Box::new(e)
-        })?;
-        info!("aTLS certificate verification successful");
-
+        let certificate: X509 = aTLS_connect(host).await?;
         let reqwest_cert = reqwest::Certificate::from_der(&certificate.to_der().unwrap()).unwrap();
         let http_client = reqwest::Client::builder()
             .use_native_tls()
@@ -232,6 +239,8 @@ impl ATLS {
         self.request(reqwest::Method::HEAD, url, Some(body)).await
     }
 }
+
+mod pylib;
 
 // use pyo3::pymodule;
 // use pyo3::Python;
