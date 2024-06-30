@@ -1,128 +1,18 @@
-use az_snp_vtpm::certs::Vcek;
-use az_snp_vtpm::hcl::HclReport;
-use az_snp_vtpm::report::{AttestationReport, Validateable};
-use openssl::pkey::PKey;
-use az_snp_vtpm::{amd_kds, imds, vtpm};
 use serde::{Serialize, Deserialize};
-use rand::Rng;
-use std::fmt::Debug;
 use log::{info, debug, error};
 use openssl::x509::X509;
 use std::error::Error;
 // use pyo3::pyclass;
 // use wasm_bindgen::prelude::*;
+mod evidence;
+use evidence::Evidence;
+mod nonce;
+use nonce::{Nonce, Base64}; 
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Evidence {
-    report: Vec<u8>,
-    quote: vtpm::Quote,
-    certs: imds::Certificates,
-}
-
-impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote, certs: imds::Certificates) -> Self {
-        Evidence {report, quote, certs}
-    }
-}
-
-pub struct Verifier;
-
-impl Verifier {
-    pub fn verify(nonce: &Nonce, evidence: &Evidence) -> Result<(), Box<dyn Error>> {
-        let Evidence { quote, report, .. } = evidence;
-    
-        let hcl_report = HclReport::new(report.clone())?;
-        let var_data_hash = hcl_report.var_data_sha256();
-        let ak_pub = hcl_report.ak_pub()?;
-        let snp_report: AttestationReport = hcl_report.try_into()?;
-    
-        let cert_chain = amd_kds::get_cert_chain()?;
-        let vcek = Vcek::from_pem(&evidence.certs.vcek)?;
-    
-        cert_chain.validate()?;
-        vcek.validate(&cert_chain)?;
-        snp_report.validate(&vcek)?;
-    
-        if var_data_hash != snp_report.report_data[..32] {
-            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "var_data_hash mismatch")));
-        }
-        let der = ak_pub.key.try_to_der()?;
-        let pub_key = PKey::public_key_from_der(&der)?;
-        quote.verify(&pub_key, nonce.as_bytes())?;
-    
-        Ok(())
-    }
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct Base64(String);
-
-impl Base64 {
-    pub fn from_base64(base64: String) -> Self {
-        Base64(base64)
-    }
-
-    pub fn to_base64(&self) -> &String {
-        &self.0
-    }
-
-    pub fn as_bytes(&self) -> Result<Vec<u8>, base64::DecodeError> {
-        base64::decode(&self.0)
-    }
-}
-
-#[derive(Clone)] 
-pub struct Nonce {
-    nonce: Vec<u8>,
-}
-
-impl Nonce {
-    pub fn generate() -> Self {
-        let mut rng = rand::thread_rng();
-        let nonce: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
-        Nonce { nonce }
-    }
-
-    pub fn read(base64: &Base64) -> Result<Self, &'static str> {
-        match base64.as_bytes() {
-            Ok(decoded) => {
-                if decoded.len() != 32 {
-                    Err("Nonce is not 32 bytes")
-                } else {
-                    Ok(Nonce { nonce: decoded })
-                }
-            },
-            Err(_) => {
-                Err("Failed to decode nonce")
-            }
-        }
-    }
-
-    pub fn extend(&mut self, certificate: &X509) -> &Nonce {
-        let certificate_bytes = certificate.to_der().unwrap();
-        let _ = self.nonce.iter().chain(certificate_bytes.iter()).cloned().collect::<Vec<u8>>();
-        self
-    }
-
-    pub fn as_bytes(&self) -> &Vec<u8> {
-        &self.nonce
-    }
-
-    pub fn as_string(&self) -> String {
-        base64::encode(&self.nonce)
-    }
-}
-
-impl Into<Base64> for Nonce {
-    fn into(self) -> Base64 {
-        let base64_encoded = base64::encode(&self.nonce);
-        Base64::from_base64(base64_encoded)
-    }
-}
 
 #[derive(Deserialize, Serialize)]
 pub struct AttestationRequest {
-    pub nonce: Base64,
+    pub nonce: Base64, // todo change to Nonce
 }
 
 #[derive(Deserialize, Serialize)]
@@ -136,44 +26,56 @@ pub struct ATLS {
     http_client: reqwest::Client,
 }
 
+extern crate crypto;
+// extern crate hex;
+use anyhow::Context;
+mod pcr; 
+use pcr::PCR;
+mod trs;
+use trs::TRS;
+
 pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
-    env_logger::init();
     info!("fn aTLS_connect: {:?}", host.to_string());
     let mut nonce: Nonce = Nonce::generate();
     let request = AttestationRequest {
         nonce: nonce.clone().into(),
     };
-    info!("nonce: {:?}", nonce.as_string());
-    let client = reqwest::Client::new();
-    let url = format!("{}/aTLS", host);
-    info!("Connecting to {} to gather evidence", url);
-    let res = client.post(url)
+
+    info!("Connecting to {} to gather evidence, nonce: {:?}", host, nonce.as_string());
+    let body = reqwest::Client::new()
+        .post(format!("{}/aTLS", host))
         .json(&serde_json::json!(request))
-        .send()
-        .await?;
+        .send().await?
+        .text().await?;
 
-    let body = res.text().await?;
-    // debug!("response body: {:#?}", body);
+    let response: AttestationResponse = serde_json::from_str(&body).context("Failed to deserialize JSON")?;
+    info!("aTLS response successfully received");
 
-    let result: Result<AttestationResponse, _> = serde_json::from_str(&body);
-    let response = result.map_err(|err| {
-        error!("Failed to deserialize JSON: {}", err);
-        Box::new(err)
-    })?;
-    info!("aTLS response successfuly received");
-    // debug!("{:#?}", response.evidence);
-    // debug!("{:#?}", response.certificate);
+    let super_nonce = nonce.extend(&X509::from_pem(&response.certificate).unwrap());
+    response.evidence.verify(super_nonce)
+        .map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
 
-    Verifier::verify(nonce.extend(&X509::from_pem(&response.certificate).unwrap()), &response.evidence)
-        .map_err(|e| {
-            error!("Failed to verify evidence: {}", e);
-            e as Box<dyn std::error::Error>
-        })?;
+    let urls = [
+        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR4RGZQMFPJ46WWS2ECZUBZQOA",
+        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest.json?token=GHSAT0AAAAAACNQDWR5OM2LSW6234SU34HMZUBZD7A",
+    ];
+    let trs = TRS::get(urls[0]).await?;
+    let golden_aggregate_hex = trs.get_boot_aggregate_hash();
+    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate_hash();
 
-    let certificate = X509::from_pem(&response.certificate).map_err(|e| {
-        error!("Failed to parse aTLS certificate: {}", e);
-        Box::new(e)
-    })?;
+    let (algo_name, expected_pcr10_value) = trs.ima_calculate();
+    debug!("Expected PCR 10: {}: 0x{}", algo_name, hex::encode(&expected_pcr10_value));
+    let actual_pcr10_value = response.evidence.get_pcr(10);
+    let actual_pcr10_value_hex = match actual_pcr10_value {
+        Some(pcr) => hex::encode(pcr),
+        None => {
+            String::from("PCR 10 not found")
+        }
+    };
+    debug!("Server's PCR 10: {}: 0x{}", algo_name, actual_pcr10_value_hex);
+
+    let certificate = X509::from_pem(&response.certificate)
+        .map_err(|err| format!("Failed to parse aTLS certificate. Error: {}", err))?;
     info!("aTLS certificate verification successful");
 
     Ok(certificate)
