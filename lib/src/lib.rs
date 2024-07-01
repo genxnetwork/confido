@@ -30,26 +30,26 @@ pub struct Verifier;
 impl Verifier {
     pub fn verify(nonce: &Nonce, evidence: &Evidence) -> Result<(), Box<dyn Error>> {
         let Evidence { quote, report, .. } = evidence;
-    
+
         let hcl_report = HclReport::new(report.clone())?;
         let var_data_hash = hcl_report.var_data_sha256();
         let ak_pub = hcl_report.ak_pub()?;
         let snp_report: AttestationReport = hcl_report.try_into()?;
-    
+
         let cert_chain = amd_kds::get_cert_chain()?;
         let vcek = Vcek::from_pem(&evidence.certs.vcek)?;
-    
+
         cert_chain.validate()?;
         vcek.validate(&cert_chain)?;
         snp_report.validate(&vcek)?;
-    
+
         if var_data_hash != snp_report.report_data[..32] {
             return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "var_data_hash mismatch")));
         }
         let der = ak_pub.key.try_to_der()?;
         let pub_key = PKey::public_key_from_der(&der)?;
         quote.verify(&pub_key, nonce.as_bytes())?;
-    
+
         Ok(())
     }
 }
@@ -71,7 +71,7 @@ impl Base64 {
     }
 }
 
-#[derive(Clone)] 
+#[derive(Clone)]
 pub struct Nonce {
     nonce: Vec<u8>,
 }
@@ -126,9 +126,16 @@ pub struct AttestationRequest {
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct ModuleLoadOrder {
+    pub kernel: String,
+    pub order: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct AttestationResponse {
     pub evidence: Evidence,
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
+    pub module_load_order: ModuleLoadOrder, // New field for module load order
 }
 
 pub struct ATLS {
@@ -187,16 +194,16 @@ impl ATLS {
             .use_native_tls()
             .add_root_certificate(reqwest_cert)
             .build()?;
-        
+
         Ok(ATLS {
             http_client: http_client
         })
     }
 
     async fn request(
-        &self, 
-        method: reqwest::Method, 
-        url: &str, 
+        &self,
+        method: reqwest::Method,
+        url: &str,
         body: Option<&str>
     ) -> Result<String, Box<dyn std::error::Error>> {
         log::debug!("Requesting URL: {}", url);
@@ -218,11 +225,11 @@ impl ATLS {
     pub async fn get(&self, url: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::GET, url, None).await
     }
-    
+
     pub async fn post(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::POST, url, Some(body)).await
     }
-    
+
     pub async fn put(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::PUT, url, Some(body)).await
     }

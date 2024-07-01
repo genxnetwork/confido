@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use std::error::Error;
 use std::fs;
+use std::fs::File;
+use std::io::{self, BufRead};
 use log::{info, error, debug};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use confido::{AttestationRequest, AttestationResponse, Nonce, Evidence};
+use confido::{AttestationRequest, AttestationResponse, Nonce, Evidence, ModuleLoadOrder};
 use openssl::x509::X509;
 use az_snp_vtpm::{imds, vtpm};
 
@@ -16,6 +18,35 @@ impl Attester {
         let certs = imds::get_certs()?;
         Ok(Evidence::new(report, quote, certs))
     }
+}
+
+// Function to read the module load order
+fn read_module_load_order() -> Result<(String, Vec<String>), Box<dyn Error>> {
+    let path = "/sys/kernel/security/ima/ascii_runtime_measurements";
+    let file = File::open(path)?;
+    let reader = io::BufReader::new(file);
+    
+    let mut module_load_order = Vec::new();
+    let mut kernel_version = String::new();
+    
+    for line in reader.lines() {
+        let line = line?;
+        if line.contains("module") {
+            // Extract module path and name from the line
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(module_path) = parts.get(4) {
+                let parts: Vec<&str> = module_path.split('/').collect();
+                if let Some(module_name) = parts.last() {
+                    module_load_order.push(module_name.to_string());
+                }
+                if kernel_version.is_empty() && parts.len() > 4 {
+                    kernel_version = parts[4].to_string();
+                }
+            }
+        }
+    }
+    
+    Ok((kernel_version, module_load_order))
 }
 
 async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>) -> impl Responder {
@@ -39,10 +70,22 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X
         }
     };
 
+    let (kernel_version, module_order) = match read_module_load_order() {
+        Ok((version, order)) => (version, order),
+        Err(e) => {
+            error!("Failed to read module load order: {}", e);
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+
     debug!("{:#?}", evidence);
     let response = AttestationResponse {
         evidence: evidence,
         certificate: certificate.to_pem().unwrap().to_vec(),
+        module_load_order: ModuleLoadOrder {
+            kernel: kernel_version,
+            order: module_order,
+        }, // Include the module load order
     };
 
     HttpResponse::Ok().json(response)
@@ -90,4 +133,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
