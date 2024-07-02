@@ -9,8 +9,6 @@ use std::fmt::Debug;
 use log::{info, debug, error};
 use openssl::x509::X509;
 use std::error::Error;
-// use pyo3::pyclass;
-// use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Evidence {
@@ -136,10 +134,10 @@ pub struct AttestationResponse {
     pub evidence: Evidence,
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
     pub module_load_order: ModuleLoadOrder, // New field for module load order
+    pub cgpu_attestation: serde_json::Value, // New field for GPU attestation
 }
 
 pub struct ATLS {
-    // certificate: X509, read once from server and initilised into http client
     http_client: reqwest::Client,
 }
 
