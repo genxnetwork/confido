@@ -28,7 +28,7 @@ wasm-bindgen = "0.2.92"
 wasm-bindgen-futures = "0.4.42"
 getrandom = { version = "0.2.15", features = ["js"] }
 hex = "0.4.3"
-ring = "0.16.20"
+ring = "0.17.8"
 rust-crypto = "0.2.36"
 byteorder = "1.4.3"
 anyhow = "1.0"

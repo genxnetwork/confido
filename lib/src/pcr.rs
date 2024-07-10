@@ -12,7 +12,7 @@ pub struct PCR {
 
 impl PCR {
     pub fn new(algo: &'static Algorithm, value: Option<Vec<u8>>) -> PCR {
-        let digest_size = algo.output_len;
+        let digest_size = algo.output_len();
         let digest = vec![0; digest_size];
         let value = value.unwrap_or_else(|| vec![0; digest_size]);
 

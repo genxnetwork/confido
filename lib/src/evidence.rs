@@ -8,6 +8,7 @@ use openssl::pkey::PKey;
 use std::error::Error;
 use log::{info, debug, error};
 use ring::digest;
+use ring::digest::Algorithm;
 use crate::nonce;
 use nonce::Nonce;
 
@@ -43,28 +44,17 @@ impl Evidence {
         let der = ak_pub.key.try_to_der()?;
         let pub_key = PKey::public_key_from_der(&der)?;
         self.quote.verify(&pub_key, nonce.as_bytes())?; // verifies signature and pcrs
+
+        info!("Evidence successfully verified");
     
         Ok(())
     }
 
-    pub fn get_boot_aggregate_hash(&self) -> String {
-        debug!("calculating boot_aggregate hash from the vTPM Quote PCR values...");
-        let pcr_values: Vec<_> = self.quote.pcrs_sha256().collect();
-        let mut boot_aggregate = digest::Context::new(&digest::SHA256);  
-    
-        for (pcr_number, pcr_value) in &pcr_values {
-            if *pcr_number < 10 {
-                debug!("PCR {}: {}", pcr_number, hex::encode(pcr_value));
-                boot_aggregate.update(*pcr_value);
-            }
-        }
-        let mut boot_aggregate_hash = boot_aggregate.finish();
-        let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
-        debug!("boot_aggregate hash calculated using the vTPM Quote PCR values:\n{}", boot_aggregate_hex);
-        boot_aggregate_hex.to_string()
+    pub fn get_boot_aggregate(&self, algo: vtpm::Algorithm) -> String {
+        self.quote.get_boot_aggregate_hash(algo)
     }
 
-    pub fn get_pcr(&self, pcr_number: usize) -> Option<Vec<u8>> {
-        self.quote.pcrs_sha256().find(|(number, _)| *number == pcr_number).map(|(_, value)| value.to_vec())
+    pub fn get_pcr(&self, algo: vtpm::Algorithm, pcr_number: usize) -> Option<Vec<u8>> {
+        self.quote.get_pcr_bank(algo).unwrap().get(pcr_number).cloned()
     }
 }

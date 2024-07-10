@@ -1,7 +1,7 @@
 // example client showcasing the usage of the ATLS library
 #[warn(unused_variables)]
 
-use confido::ATLS;
+use confido::atls::ATLS;
 use tokio;
 
 
