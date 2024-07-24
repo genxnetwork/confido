@@ -53,11 +53,7 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     response.evidence.verify(super_nonce)
         .map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
 
-    let urls = [
-        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest.json?token=GHSAT0AAAAAACNQDWR5B5F4XDETUL5577SWZUCKJPQ",
-        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest-4.231.233.49.json?token=GHSAT0AAAAAACNQDWR4OG75TCSQB5O3V2OSZVBEILQ",
-    ];
-    let trs = TRS::get(urls[1]).await?;
+    let trs = TRS::get(&host).await?;
     let golden_aggregate_hex = trs.get_boot_aggregate_hash()?;
 
     let algo = response.evidence.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;

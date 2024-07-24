@@ -4,6 +4,9 @@ use log::{info, debug, error};
 use std::io::Write;
 use crate::pcr::{PCR};
 use az_snp_vtpm::vtpm;
+use std::env;
+use tokio::net::lookup_host;
+use reqwest::Url;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct IMALogEntry {
@@ -33,8 +36,27 @@ pub struct TRS {
 
 impl TRS {
     pub async fn get(url: &str) -> Result<TRS, Box<dyn std::error::Error>> {
+        let url = Url::parse(url).unwrap();
+        let mut host = url.host_str().unwrap().to_string();
+        if host == "127.0.0.1" || host == "localhost" {
+            host = reqwest::get("https://api.ipify.org")
+                .await?
+                .text()
+                .await?;
+        }
+        info!("Fetching TRS for {}", host);
+        let home_dir = env::var("HOME")?;
+        let token_path = format!("{}/.confido/trs.token", home_dir);
+        let pat = std::fs::read_to_string(token_path)?
+            .trim()
+            .to_string();
+        let trs = "genxnetwork/confido-private";
+        let url = format!("https://api.github.com/repos/{}/contents/bb-attest-{}.json", trs, host).to_string();
         let client = reqwest::Client::new();
-        let data = client.get(url)
+        let data = client.get(&url)
+            .header("Accept", "application/vnd.github.raw+json")
+            .header("User-Agent", "confido")
+            .bearer_auth(pat)
             .send().await?
             .text().await?;
         let trs: TRS = serde_json::from_str(&data)?;
