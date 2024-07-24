@@ -1,27 +1,34 @@
-// use az_snp_vtpm::certs::Vcek;
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::{AttestationReport, Validateable};
-use az_snp_vtpm::{amd_kds, imds, vtpm};
-use serde::{Serialize, Deserialize};
+use az_snp_vtpm::{amd_kds, vtpm};
 use openssl::pkey::PKey;
-// use openssl::x509::X509;
 use std::error::Error;
-use log::{info, debug, error};
-use ring::digest;
-use ring::digest::Algorithm;
+use log::{info, debug};
 use crate::nonce;
 use nonce::Nonce;
+use serde::{Serialize, Deserialize};
+use std::fmt;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Evidence {
-    report: Vec<u8>,
+    pub report: Vec<u8>,
     quote: vtpm::Quote,
-    certs: imds::Certificates,
+}
+
+impl fmt::Debug for Evidence {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let report_hex = hex::encode(&self.report);
+
+        f.debug_struct("Evidence")
+            .field("report", &report_hex)
+            .field("quote", &self.quote)
+            .finish()
+    }
 }
 
 impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote, certs: imds::Certificates) -> Self {
-        Evidence {report, quote, certs}
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote) -> Self {
+        Evidence {report, quote}
     }
 
     pub fn verify(&self, nonce: &Nonce) -> Result<(), Box<dyn Error>> {    
@@ -50,8 +57,20 @@ impl Evidence {
         Ok(())
     }
 
-    pub fn get_boot_aggregate(&self, algo: vtpm::Algorithm) -> String {
-        self.quote.get_boot_aggregate_hash(algo)
+    pub fn get_boot_aggregate_hash(&self, algo: vtpm::Algorithm) -> String {
+        info!("calculating boot_aggregate hash from the vTPM Quote PCR values...");
+        let mut boot_aggregate = ring::digest::Context::new(algo.digest());  
+        
+        for (pcr_number, pcr_value) in self.quote.get_pcr_bank(algo).unwrap().pcr_values.iter().enumerate() {
+            if pcr_number < 10 {
+                debug!("PCR {}: {}", pcr_number, hex::encode(pcr_value));
+                boot_aggregate.update(pcr_value);
+            }
+        }
+        let boot_aggregate_hash = boot_aggregate.finish();
+        let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
+        info!("boot_aggregate hash calculated using the vTPM Quote PCR values:\n{}", boot_aggregate_hex);
+        boot_aggregate_hex.to_string()
     }
 
     pub fn get_pcr(&self, algo: vtpm::Algorithm, pcr_number: usize) -> Option<Vec<u8>> {

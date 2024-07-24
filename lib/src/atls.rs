@@ -1,10 +1,8 @@
-use crate::pcr::PCR;
 use crate::trs::TRS;
-use ring::digest::{SHA256, SHA1_FOR_LEGACY_USE_ONLY};
 use crate::nonce::{Nonce, Base64}; 
 use az_snp_vtpm::vtpm;
 use serde::{Serialize, Deserialize};
-use log::{info, debug, error};
+use log::{info, debug};
 use openssl::x509::X509;
 use std::error::Error;
 use crate::evidence::Evidence;
@@ -41,6 +39,7 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
         .text().await?;
 
     let response: AttestationResponse = serde_json::from_str(&body).context("Failed to deserialize JSON")?;
+    debug!("aTLS response: {:#?}", response.evidence);
     info!("aTLS response successfully received");
 
     let super_nonce = nonce.extend(&X509::from_pem(&response.certificate).unwrap());
@@ -49,11 +48,13 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
 
     let urls = [
         "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest.json?token=GHSAT0AAAAAACNQDWR5B5F4XDETUL5577SWZUCKJPQ",
-        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR4ZDPZOVCVIGNTMUNMZUOPNGA",
+        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR5OQ5VNOKZDAQDEIWYZVAELWQ",
     ];
     let trs = TRS::get(urls[1]).await?;
     let golden_aggregate_hex = trs.get_boot_aggregate_hash();
-    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate(vtpm::Algorithm::Sha1);
+    debug!("Golden boot aggregate hash: 0x{}", golden_aggregate_hex);
+    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate_hash(vtpm::Algorithm::Sha1);
+    debug!("Server's boot aggregate hash: 0x{}", actual_boot_aggregate_hex);
 
     let (algo_name, expected_pcr10_value) = trs.ima_calculate();
     debug!("Expected PCR 10: {}: 0x{}", algo_name, hex::encode(&expected_pcr10_value));

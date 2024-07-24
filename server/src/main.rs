@@ -1,13 +1,12 @@
 use std::sync::Arc;
 use std::error::Error;
-use std::fs;
 use log::{info, error, debug};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use confido::atls::{AttestationRequest, AttestationResponse};
 use confido::nonce::Nonce;
 use confido::evidence::Evidence;
 use openssl::x509::X509;
-use az_snp_vtpm::{imds, vtpm};
+use az_snp_vtpm::vtpm;
 use openssl::rsa::Rsa;
 use openssl::hash::MessageDigest;
 use openssl::asn1::Asn1Time;
@@ -19,19 +18,15 @@ use openssl::pkey::Private;
 pub struct Attester;
 
 impl Attester {
-    pub fn gather_evidence(nonce: &Nonce) -> Result<Evidence, Box<dyn Error>> {
+    pub fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
-        let algorithms = vec![
-            vtpm::Algorithm::Sha1, 
-            vtpm::Algorithm::Sha256
-        ];
-        let quote = vtpm::get_quote(nonce.as_bytes(), algorithms)?;
-        let certs = imds::get_certs()?;
-        Ok(Evidence::new(report, quote, certs))
+        let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
+        // let certs = imds::get_certs()?;
+        Ok(Evidence::new(report, quote))
     }
 }
 
-async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>) -> impl Responder {
+async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>, algorithms: Arc<Vec<vtpm::Algorithm>>) -> impl Responder {
     info!("Received attestation request");
     let mut nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
@@ -41,7 +36,7 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X
         }
     };
 
-    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate)) {
+    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&algorithms)) {
         Ok(evidence) => {
             info!("Successfully gathered evidence");
             evidence
@@ -119,6 +114,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .help("Sets the certificate folder")
             .required(true)
             .index(2))
+        .arg(clap::Arg::new("algo")
+            .help("Sets the algorithm")
+            .required(true)
+            .index(3)
+            .multiple_values(true)
+            .possible_values(&["sha1", "sha256"]))
         .get_matches();
 
     let host_port = matches.value_of("host:port").unwrap_or("127.0.0.1:8080");
@@ -158,13 +159,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // let certificate = X509::from_pem(&fullchain_pem)?;
     let certificate = Arc::new(certificate);
 
+    let mut algorithms = Vec::new();
+    if let Some(values) = matches.values_of("algo") {
+        for algo in values {
+            match algo {
+                "sha1" => algorithms.push(vtpm::Algorithm::Sha1),
+                "sha256" => algorithms.push(vtpm::Algorithm::Sha256),
+                _ => unreachable!(), 
+            }
+        }
+    }
+
+    if algorithms.is_empty() {
+        algorithms.push(vtpm::Algorithm::Sha256);
+    }
+
+    let algorithms = Arc::new(algorithms);
+
     info!("Starting server at {}", host_port);
     HttpServer::new(move || {
         let certificate = Arc::clone(&certificate);
+        let algorithms = Arc::clone(&algorithms);
         App::new().route("/aTLS", web::post().to(move |data: web::Json<AttestationRequest>| {
             info!("http server aTLS route called");
-            let certificate = Arc::clone(&certificate);
-            atls_http_route(data, certificate)
+            atls_http_route(data, Arc::clone(&certificate), Arc::clone(&algorithms))
         }))
     })
     .bind(host_port)?

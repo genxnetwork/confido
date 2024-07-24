@@ -1,7 +1,6 @@
 use byteorder::{LittleEndian, WriteBytesExt};
 use serde::{Serialize, Deserialize};
 use log::{info, debug, error};
-use ring::{digest};
 use std::io::Write;
 use crate::pcr::{PCR};
 
@@ -72,19 +71,19 @@ impl TRS {
         let entry = self.ima_measurements.iter().find(|&measurement| measurement.filename_hint == "boot_aggregate");
         match entry {
             Some(measurement) => {
-                debug!("ima template:\n{}", measurement.ima_template);
+                info!("ima template:\n{}", measurement.ima_template);
                 debug!("boot_aggregate filedata_hash from the trusted repo:\n{}", measurement.filedata_hash);
                 measurement.filedata_hash.clone()
             }
             None => {
-                debug!("No entry found with filename_hint = 'boot_aggregate'");
+                error!("No entry found with filename_hint = 'boot_aggregate'");
                 "".to_string()
             }
         }
     }
 
     fn ima_sig(&self) -> (String, Vec<u8>) {
-        let mut AggPCR = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
+        let mut aggregated_pcr = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
         for measurement in &self.ima_measurements {
             let mut ima_data = vec![];
     
@@ -92,7 +91,7 @@ impl TRS {
             let algo_len = 40;//lgo.len() as u32;
             ima_data.write_u32::<LittleEndian>(algo_len).unwrap();
             ima_data.write_all(algo.as_bytes()).unwrap();
-            ima_data.write_u8(0);
+            let _ = ima_data.write_u8(0);
     
             let filedata_hash_bytes = hex::decode(&measurement.filedata_hash).unwrap();
             ima_data.write_all(&filedata_hash_bytes).unwrap();
@@ -103,7 +102,7 @@ impl TRS {
             ima_data.write_all(file.as_bytes()).unwrap();
             for _ in 0..5 { ima_data.write_u8(0).unwrap(); }
     
-            let ima_data_str: String = ima_data.iter().map(|&b| {
+            let _ima_data_str: String = ima_data.iter().map(|&b| {
                 if b.is_ascii() && !b.is_ascii_control() {
                     format!("{}", b as char)
                 } else {
@@ -111,19 +110,19 @@ impl TRS {
                 }
             }).collect();
             
-            AggPCR.extend(&ima_data);
+            aggregated_pcr.extend(&ima_data);
         }
-        ("sha256".to_string(), AggPCR.value)
+        ("sha256".to_string(), aggregated_pcr.value)
     }
 
     fn ima_ng(&self) -> (String, Vec<u8>) {
-        let mut AggPCR = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
+        let mut aggregated_pcr = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
         for measurement in &self.ima_measurements {
-            let agg_pcr_bytes = AggPCR.get().clone();
+            let agg_pcr_bytes = aggregated_pcr.get().clone();
             let template_hash_bytes = measurement.template_hash.as_bytes();
-            AggPCR.extend(&[agg_pcr_bytes.as_slice(), template_hash_bytes].concat());
+            aggregated_pcr.extend(&[agg_pcr_bytes.as_slice(), template_hash_bytes].concat());
         }
-        ("sha1".to_string(), AggPCR.value)
+        ("sha1".to_string(), aggregated_pcr.value)
     }
 
     pub fn ima_calculate(&self) -> (String, Vec<u8>) {

@@ -23,7 +23,8 @@ reqwest = { version = "0.12.4", features = ["json", "native-tls", "blocking"] }
 pyo3 = { version = "0.20.0", features = ["extension-module"] }
 pyo3-asyncio = { version = "0.20.0", features = ["tokio"] }
 tokio = { version = "1", features = ["full"] }
-serde_bytes = "0.11"
+serde_bytes = "0.11.15"
+serde_with = "1.11.0"
 wasm-bindgen = "0.2.92"
 wasm-bindgen-futures = "0.4.42"
 getrandom = { version = "0.2.15", features = ["js"] }

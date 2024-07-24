@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use openssl::x509::X509;
-use std::error::Error;
 use rand::Rng;
 
 #[derive(Deserialize, Serialize)]
