@@ -62,7 +62,7 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     if golden_aggregate_hex == server_boot_aggregate_hash {
         info!("Boot aggregate hash matches");
     } else {
-        return Err(format!("Boot aggregate hash mismatch: expected {}, got {}", golden_aggregate_hex, server_boot_aggregate_hash).into());
+        return Err(format!("Boot aggregate hash mismatch").into());
     }
 
     let (algo_name, expected_pcr10_value) = match trs.ima_calculate() {
@@ -87,7 +87,7 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     if expected_pcr10_value_hex == actual_pcr10_value_hex {
         info!("PCR 10 matches");
     } else {
-        return Err(format!("PCR 10 mismatch: expected 0x{}, got 0x{}", hex::encode(&expected_pcr10_value), actual_pcr10_value_hex).into());
+        return Err(format!("PCR 10 mismatch").into());
     }
 
     let certificate = X509::from_pem(&response.certificate)

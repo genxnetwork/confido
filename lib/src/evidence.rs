@@ -58,20 +58,27 @@ impl Evidence {
     }
 
     pub fn get_boot_aggregate_hash(&self, algo: vtpm::Algorithm) -> Result<String, &'static str> {
-        info!("calculating boot_aggregate hash from the vTPM Quote PCR values...");
+        let algo_name = algo.to_str();
+        info!("calculating boot_aggregate {} hash using the vTPM Quote PCR values...", algo_name);
         let mut boot_aggregate = ring::digest::Context::new(algo.digest());  
+
+        let max_pcr_number = match algo_name {
+            "sha1" => 8,
+            "sha256" => 10,
+            _ => return Err("Unsupported algorithm".into()),
+        };
     
         match self.quote.get_pcr_bank(algo) {
             Some(pcr_bank) => {
                 for (pcr_number, pcr_value) in pcr_bank.pcr_values.iter().enumerate() {
-                    if pcr_number < 10 {
+                    if pcr_number < max_pcr_number {
                         debug!("PCR {}: {}", pcr_number, hex::encode(pcr_value));
                         boot_aggregate.update(pcr_value);
                     }
                 }
                 let boot_aggregate_hash = boot_aggregate.finish();
                 let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
-                info!("calculated boot_aggregate hash: {}", boot_aggregate_hex);
+                info!("calculated boot_aggregate {} hash: {}", algo_name, boot_aggregate_hex);
                 Ok(boot_aggregate_hex.to_string())
             },
             None => Err("No PCR bank found"),
