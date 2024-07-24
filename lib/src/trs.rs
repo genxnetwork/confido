@@ -7,9 +7,11 @@ use az_snp_vtpm::vtpm;
 use std::env;
 use tokio::net::lookup_host;
 use reqwest::Url;
+use ring::digest::{Context, SHA1_FOR_LEGACY_USE_ONLY};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct IMALogEntry {
+    name: String,
     #[serde(rename = "PCR")]
     pcr: u32,
     // name: String,
@@ -112,14 +114,61 @@ impl TRS {
         (vtpm::Algorithm::Sha256, aggregated_pcr.value)
     }
 
+    // fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
+    //     let mut aggregated_pcr = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
+    //     for measurement in &self.ima_measurements {
+    //         let agg_pcr_bytes = hex::encode(aggregated_pcr.get());
+            
+    //         // let template_hash_bytes = measurement.template_hash;
+    //         aggregated_pcr.extend(&[agg_pcr_bytes, measurement.template_hash.clone()].concat().as_bytes());
+    //         debug!("ima-ng: {}, {}", measurement.name, hex::encode(aggregated_pcr.get()));
+    //     }
+    //     (vtpm::Algorithm::Sha1, aggregated_pcr.value)
+    // }
+
+    // fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
+    //     let mut pcr = PCR::new(&SHA1_FOR_LEGACY_USE_ONLY, None); // initial value
+    
+    //     for measurement in &self.ima_measurements {
+    //         let hash_value = measurement.template_hash.clone();
+    //         debug!("ima-ng: {}, {}", measurement.name, hash_value);
+    
+    //         let concatenated_string = format!("{}{}", hex::encode(pcr.get()), hash_value);
+    //         debug!("concatenated_string: {}", concatenated_string);
+    //         // Convert the hex string to bytes
+    //         let data = hex::decode(concatenated_string).expect("Failed to decode hex string");
+    
+    //         // Extend the PCR with the data
+    //         pcr.extend(&data);
+    //     }
+    
+    //     (vtpm::Algorithm::Sha1, pcr.get())
+    // }
+
     fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
-        let mut aggregated_pcr = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
+        let mut aggregated_value = "0000000000000000000000000000000000000000".to_string(); // initial value
+    
         for measurement in &self.ima_measurements {
-            let agg_pcr_bytes = aggregated_pcr.get().clone();
-            let template_hash_bytes = measurement.template_hash.as_bytes();
-            aggregated_pcr.extend(&[agg_pcr_bytes.as_slice(), template_hash_bytes].concat());
+            let hash_value = measurement.template_hash.clone();
+            debug!("ima-ng: {}", measurement.name);
+    
+            // The hexadecimal string to be hashed
+            let concatenated_string = aggregated_value + &hash_value;
+    
+            // Convert the hex string to bytes
+            let data = hex::decode(concatenated_string).expect("Failed to decode hex string");
+    
+            // Create a new SHA-1 hash object
+            let mut context = Context::new(&SHA1_FOR_LEGACY_USE_ONLY);
+    
+            // Update the hash object with the bytes
+            context.update(&data);
+    
+            // Get the bytes of the digest
+            aggregated_value = hex::encode(context.finish().as_ref());
         }
-        (vtpm::Algorithm::Sha1, aggregated_pcr.value)
+    
+        (vtpm::Algorithm::Sha1, hex::decode(aggregated_value).expect("Failed to decode hex string"))
     }
 
     pub fn ima_calculate(&self) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
