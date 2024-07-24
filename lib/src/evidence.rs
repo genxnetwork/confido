@@ -71,7 +71,7 @@ impl Evidence {
                 }
                 let boot_aggregate_hash = boot_aggregate.finish();
                 let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
-                info!("boot_aggregate hash calculated using the vTPM Quote PCR values:\n{}", boot_aggregate_hex);
+                info!("calculated boot_aggregate hash: {}", boot_aggregate_hex);
                 Ok(boot_aggregate_hex.to_string())
             },
             None => Err("No PCR bank found"),

@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 use log::{info, debug, error};
 use std::io::Write;
 use crate::pcr::{PCR};
+use az_snp_vtpm::vtpm;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct IMALogEntry {
@@ -40,22 +41,22 @@ impl TRS {
         Ok(trs)
     }
 
-    pub fn get_boot_aggregate_hash(&self) -> String {
+    pub fn get_boot_aggregate_hash(&self) -> Result<String, &'static str> {
         let entry = self.ima_measurements.iter().find(|&measurement| measurement.filename_hint == "boot_aggregate");
         match entry {
             Some(measurement) => {
-                info!("ima template: {}", measurement.ima_template);
-                debug!("boot_aggregate filedata_hash from the trusted repo:\n{}", measurement.filedata_hash);
-                measurement.filedata_hash.clone()
+                info!("TRS ima-template: {}", measurement.ima_template);
+                debug!("TRS boot_aggregate template_hash: {}", measurement.template_hash);
+                debug!("TRS boot_aggregate filedata_hash: {}", measurement.filedata_hash);
+                Ok(measurement.filedata_hash.clone())
             }
             None => {
-                error!("No entry found with filename_hint = 'boot_aggregate'");
-                "".to_string()
+                Err("No entry found with filename_hint = 'boot_aggregate'")
             }
         }
     }
 
-    fn ima_sig(&self) -> (String, Vec<u8>) {
+    fn ima_sig(&self) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_pcr = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
         for measurement in &self.ima_measurements {
             let mut ima_data = vec![];
@@ -85,22 +86,20 @@ impl TRS {
             
             aggregated_pcr.extend(&ima_data);
         }
-        ("sha256".to_string(), aggregated_pcr.value)
+        (vtpm::Algorithm::Sha256, aggregated_pcr.value)
     }
 
-    fn ima_ng(&self) -> (String, Vec<u8>) {
+    fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_pcr = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
         for measurement in &self.ima_measurements {
             let agg_pcr_bytes = aggregated_pcr.get().clone();
             let template_hash_bytes = measurement.template_hash.as_bytes();
             aggregated_pcr.extend(&[agg_pcr_bytes.as_slice(), template_hash_bytes].concat());
         }
-        ("sha1".to_string(), aggregated_pcr.value)
+        (vtpm::Algorithm::Sha1, aggregated_pcr.value)
     }
 
-    pub fn ima_calculate(&self) -> Result<(String, Vec<u8>), &'static str> {
-        info!("Calculating the expected PCR10 using the actual boot_aggregate and trusted modules' hashes");
-
+    pub fn ima_calculate(&self) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
         let template = match self.ima_measurements.get(0) {
             Some(first_measurement) => &first_measurement.ima_template,
             None => {

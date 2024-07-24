@@ -55,19 +55,13 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
 
     let urls = [
         "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest.json?token=GHSAT0AAAAAACNQDWR5B5F4XDETUL5577SWZUCKJPQ",
-        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR4MFO5VXCNRTLLM3Z6ZVBAJXQ",
+        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest-4.231.233.49.json?token=GHSAT0AAAAAACNQDWR4OG75TCSQB5O3V2OSZVBEILQ",
     ];
     let trs = TRS::get(urls[1]).await?;
-    let golden_aggregate_hex = trs.get_boot_aggregate_hash();
-    debug!("Golden boot aggregate hash: 0x{}", golden_aggregate_hex);
+    let golden_aggregate_hex = trs.get_boot_aggregate_hash()?;
 
-    let algo = response.evidence.get_algo().unwrap();
-    
-    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate_hash(algo.clone());
-    match actual_boot_aggregate_hex {
-        Ok(hash) => debug!("Server's boot aggregate hash: 0x{}", hash),
-        Err(e) => error!("Failed to get boot aggregate hash: {}", e),
-    }
+    let algo = response.evidence.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;
+    let server_boot_aggregate_hash = response.evidence.get_boot_aggregate_hash(algo.clone())?;
 
     let (algo_name, expected_pcr10_value) = match trs.ima_calculate() {
         Ok(result) => result,
@@ -76,7 +70,8 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
             return Err(e.into());
         }
     };
-    debug!("Expected PCR 10: {}: 0x{}", algo_name, hex::encode(&expected_pcr10_value));
+    debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), hex::encode(&expected_pcr10_value));
+    
     let actual_pcr10_value = response.evidence.get_pcr(algo, 10);
     let actual_pcr10_value_hex = match actual_pcr10_value {
         Ok(pcr) => hex::encode(pcr),
@@ -85,7 +80,7 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
             String::from("PCR 10 not found")
         }
     };
-    debug!("Server's PCR 10: {}: 0x{}", algo_name, actual_pcr10_value_hex);
+    debug!("Server's PCR 10: {}: 0x{}", algo_name.to_str(), actual_pcr10_value_hex);
 
     let certificate = X509::from_pem(&response.certificate)
         .map_err(|err| format!("Failed to parse aTLS certificate. Error: {}", err))?;
