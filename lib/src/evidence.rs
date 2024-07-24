@@ -57,23 +57,47 @@ impl Evidence {
         Ok(())
     }
 
-    pub fn get_boot_aggregate_hash(&self, algo: vtpm::Algorithm) -> String {
+    pub fn get_boot_aggregate_hash(&self, algo: vtpm::Algorithm) -> Result<String, &'static str> {
         info!("calculating boot_aggregate hash from the vTPM Quote PCR values...");
         let mut boot_aggregate = ring::digest::Context::new(algo.digest());  
-        
-        for (pcr_number, pcr_value) in self.quote.get_pcr_bank(algo).unwrap().pcr_values.iter().enumerate() {
-            if pcr_number < 10 {
-                debug!("PCR {}: {}", pcr_number, hex::encode(pcr_value));
-                boot_aggregate.update(pcr_value);
-            }
+    
+        match self.quote.get_pcr_bank(algo) {
+            Some(pcr_bank) => {
+                for (pcr_number, pcr_value) in pcr_bank.pcr_values.iter().enumerate() {
+                    if pcr_number < 10 {
+                        debug!("PCR {}: {}", pcr_number, hex::encode(pcr_value));
+                        boot_aggregate.update(pcr_value);
+                    }
+                }
+                let boot_aggregate_hash = boot_aggregate.finish();
+                let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
+                info!("boot_aggregate hash calculated using the vTPM Quote PCR values:\n{}", boot_aggregate_hex);
+                Ok(boot_aggregate_hex.to_string())
+            },
+            None => Err("No PCR bank found"),
         }
-        let boot_aggregate_hash = boot_aggregate.finish();
-        let boot_aggregate_hex = hex::encode(boot_aggregate_hash.as_ref());
-        info!("boot_aggregate hash calculated using the vTPM Quote PCR values:\n{}", boot_aggregate_hex);
-        boot_aggregate_hex.to_string()
     }
 
-    pub fn get_pcr(&self, algo: vtpm::Algorithm, pcr_number: usize) -> Option<Vec<u8>> {
-        self.quote.get_pcr_bank(algo).unwrap().get(pcr_number).cloned()
+    pub fn get_algo(&self) -> Option<vtpm::Algorithm> {
+        if let Some(pcr_bank) = self.quote.get_pcr_bank(vtpm::Algorithm::Sha1) {
+            Some(pcr_bank.algo.clone())
+        } else if let Some(pcr_bank) = self.quote.get_pcr_bank(vtpm::Algorithm::Sha256) {
+            Some(pcr_bank.algo.clone())
+        } else {
+            None
+        }
     }
+
+    pub fn get_pcr(&self, algo: vtpm::Algorithm, pcr_number: usize) -> Result<Vec<u8>, &'static str> {
+        match self.quote.get_pcr_bank(algo) {
+            Some(pcr_bank) => {
+                match pcr_bank.get(pcr_number) {
+                    Some(pcr_value) => Ok(pcr_value.clone()),
+                    None => Err("No PCR value found"),
+                }
+            },
+            None => Err("No PCR bank found"),
+        }
+    }
+
 }

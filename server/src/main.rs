@@ -188,7 +188,8 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X
         Ok(cgpu_attestation) => cgpu_attestation,
         Err(e) => {
             error!("Failed to get GPU attestation: {}", e);
-            return HttpResponse::InternalServerError().finish();
+            serde_json::Value::Null
+            // return HttpResponse::InternalServerError().finish();
         }
     };
 

@@ -1,8 +1,7 @@
 use crate::trs::TRS;
 use crate::nonce::{Nonce, Base64}; 
-use az_snp_vtpm::vtpm;
 use serde::{Serialize, Deserialize};
-use log::{info, debug};
+use log::{info, debug, error};
 use openssl::x509::X509;
 use std::error::Error;
 use crate::evidence::Evidence;
@@ -56,20 +55,33 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
 
     let urls = [
         "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-attest.json?token=GHSAT0AAAAAACNQDWR5B5F4XDETUL5577SWZUCKJPQ",
-        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR5OQ5VNOKZDAQDEIWYZVAELWQ",
+        "https://raw.githubusercontent.com/genxnetwork/confido-private/master/bb-ubuntu-22.04.4.json?token=GHSAT0AAAAAACNQDWR4MFO5VXCNRTLLM3Z6ZVBAJXQ",
     ];
     let trs = TRS::get(urls[1]).await?;
     let golden_aggregate_hex = trs.get_boot_aggregate_hash();
     debug!("Golden boot aggregate hash: 0x{}", golden_aggregate_hex);
-    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate_hash(vtpm::Algorithm::Sha1);
-    debug!("Server's boot aggregate hash: 0x{}", actual_boot_aggregate_hex);
 
-    let (algo_name, expected_pcr10_value) = trs.ima_calculate();
+    let algo = response.evidence.get_algo().unwrap();
+    
+    let actual_boot_aggregate_hex = response.evidence.get_boot_aggregate_hash(algo.clone());
+    match actual_boot_aggregate_hex {
+        Ok(hash) => debug!("Server's boot aggregate hash: 0x{}", hash),
+        Err(e) => error!("Failed to get boot aggregate hash: {}", e),
+    }
+
+    let (algo_name, expected_pcr10_value) = match trs.ima_calculate() {
+        Ok(result) => result,
+        Err(e) => {
+            error!("Error calculating IMA: {}", e);
+            return Err(e.into());
+        }
+    };
     debug!("Expected PCR 10: {}: 0x{}", algo_name, hex::encode(&expected_pcr10_value));
-    let actual_pcr10_value = response.evidence.get_pcr(vtpm::Algorithm::Sha1, 10);
+    let actual_pcr10_value = response.evidence.get_pcr(algo, 10);
     let actual_pcr10_value_hex = match actual_pcr10_value {
-        Some(pcr) => hex::encode(pcr),
-        None => {
+        Ok(pcr) => hex::encode(pcr),
+        Err(e) => {
+            error!("Failed to get PCR 10: {}", e);
             String::from("PCR 10 not found")
         }
     };
