@@ -14,9 +14,17 @@ pub struct AttestationRequest {
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct ModuleLoadOrder {
+    pub kernel: String,
+    pub order: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct AttestationResponse {
     pub evidence: Evidence,
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
+    pub module_load_order: ModuleLoadOrder, // New field for module load order
+    pub cgpu_attestation: serde_json::Value, // New field for GPU attestation
 }
 
 pub struct ATLS {
