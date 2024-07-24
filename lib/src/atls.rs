@@ -59,6 +59,12 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     let algo = response.evidence.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;
     let server_boot_aggregate_hash = response.evidence.get_boot_aggregate_hash(algo.clone())?;
 
+    if golden_aggregate_hex == server_boot_aggregate_hash {
+        info!("Boot aggregate hash matches");
+    } else {
+        return Err(format!("Boot aggregate hash mismatch: expected {}, got {}", golden_aggregate_hex, server_boot_aggregate_hash).into());
+    }
+
     let (algo_name, expected_pcr10_value) = match trs.ima_calculate() {
         Ok(result) => result,
         Err(e) => {
@@ -66,10 +72,10 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
             return Err(e.into());
         }
     };
-    debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), hex::encode(&expected_pcr10_value));
+    let expected_pcr10_value_hex = hex::encode(&expected_pcr10_value);
+    debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), expected_pcr10_value_hex);
     
-    let actual_pcr10_value = response.evidence.get_pcr(algo, 10);
-    let actual_pcr10_value_hex = match actual_pcr10_value {
+    let actual_pcr10_value_hex = match response.evidence.get_pcr(algo, 10) {
         Ok(pcr) => hex::encode(pcr),
         Err(e) => {
             error!("Failed to get PCR 10: {}", e);
@@ -77,6 +83,12 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
         }
     };
     debug!("Server's PCR 10: {}: 0x{}", algo_name.to_str(), actual_pcr10_value_hex);
+
+    if expected_pcr10_value_hex == actual_pcr10_value_hex {
+        info!("PCR 10 matches");
+    } else {
+        return Err(format!("PCR 10 mismatch: expected 0x{}, got 0x{}", hex::encode(&expected_pcr10_value), actual_pcr10_value_hex).into());
+    }
 
     let certificate = X509::from_pem(&response.certificate)
         .map_err(|err| format!("Failed to parse aTLS certificate. Error: {}", err))?;
