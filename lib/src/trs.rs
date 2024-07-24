@@ -47,9 +47,10 @@ impl TRS {
         info!("Fetching TRS for {}", host);
         let home_dir = env::var("HOME")?;
         let token_path = format!("{}/.confido/trs.token", home_dir);
-        let pat = std::fs::read_to_string(token_path)?
-            .trim()
-            .to_string();
+        let pat = match std::fs::read_to_string(token_path) {
+            Ok(content) => content.trim().to_string(),
+            Err(_) => return Err("Failed to read the token file. Please make sure the token file exists and is readable.".into()),
+        };
         let trs = "genxnetwork/confido-private";
         let url = format!("https://api.github.com/repos/{}/contents/bb-attest-{}.json", trs, host).to_string();
         let client = reqwest::Client::new();
