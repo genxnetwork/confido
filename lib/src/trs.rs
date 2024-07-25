@@ -84,6 +84,7 @@ impl TRS {
     fn ima_sig(&self) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_pcr = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
         for measurement in &self.ima_measurements {
+            debug!("ima-sig: {}", measurement.name);
             let mut ima_data = vec![];
     
             let algo = "sha256:";
@@ -114,37 +115,6 @@ impl TRS {
         (vtpm::Algorithm::Sha256, aggregated_pcr.value)
     }
 
-    // fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
-    //     let mut aggregated_pcr = PCR::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, Some(vec![0; 20]));
-    //     for measurement in &self.ima_measurements {
-    //         let agg_pcr_bytes = hex::encode(aggregated_pcr.get());
-            
-    //         // let template_hash_bytes = measurement.template_hash;
-    //         aggregated_pcr.extend(&[agg_pcr_bytes, measurement.template_hash.clone()].concat().as_bytes());
-    //         debug!("ima-ng: {}, {}", measurement.name, hex::encode(aggregated_pcr.get()));
-    //     }
-    //     (vtpm::Algorithm::Sha1, aggregated_pcr.value)
-    // }
-
-    // fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
-    //     let mut pcr = PCR::new(&SHA1_FOR_LEGACY_USE_ONLY, None); // initial value
-    
-    //     for measurement in &self.ima_measurements {
-    //         let hash_value = measurement.template_hash.clone();
-    //         debug!("ima-ng: {}, {}", measurement.name, hash_value);
-    
-    //         let concatenated_string = format!("{}{}", hex::encode(pcr.get()), hash_value);
-    //         debug!("concatenated_string: {}", concatenated_string);
-    //         // Convert the hex string to bytes
-    //         let data = hex::decode(concatenated_string).expect("Failed to decode hex string");
-    
-    //         // Extend the PCR with the data
-    //         pcr.extend(&data);
-    //     }
-    
-    //     (vtpm::Algorithm::Sha1, pcr.get())
-    // }
-
     fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_value = "0000000000000000000000000000000000000000".to_string(); // initial value
     
@@ -172,6 +142,7 @@ impl TRS {
     }
 
     pub fn ima_calculate(&self) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+        info!("Calculating PCR10 value from IMA measurements");
         let template = match self.ima_measurements.get(0) {
             Some(first_measurement) => &first_measurement.ima_template,
             None => {
