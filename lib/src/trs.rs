@@ -108,6 +108,7 @@ impl TRS {
         let sorted_measurements = self.ima_sort(module_load_order);
 
         for measurement in sorted_measurements.iter() {
+            debug!("ima-sig: {}", measurement.name);
             let mut ima_data = vec![];
     
             let algo = "sha256:";
@@ -197,6 +198,7 @@ impl TRS {
     }
 
     pub fn ima_calculate(&self, module_load_order: &ModuleLoadOrder) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+        info!("Calculating PCR10 value from IMA measurements");
         let template = match self.ima_measurements.get(0) {
             Some(first_measurement) => &first_measurement.ima_template,
             None => {
