@@ -1,4 +1,3 @@
-use crate::trs::TRS;
 use crate::nonce::{Nonce, Base64}; 
 use serde::{Serialize, Deserialize};
 use log::{info, debug, error};
@@ -12,7 +11,7 @@ pub struct AttestationRequest {
     pub nonce: Base64, // todo change to Nonce
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ModuleLoadOrder {
     pub kernel: String,
     pub order: Vec<String>,
@@ -22,8 +21,6 @@ pub struct ModuleLoadOrder {
 pub struct AttestationResponse {
     pub evidence: Evidence,
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
-    pub module_load_order: ModuleLoadOrder, // New field for module load order
-    pub cgpu_attestation: serde_json::Value, // New field for GPU attestation
 }
 
 pub struct ATLS {
@@ -50,45 +47,8 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     info!("aTLS response successfully received");
 
     let super_nonce = nonce.extend(&X509::from_pem(&response.certificate).unwrap());
-    response.evidence.verify(super_nonce)
-        .map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
-
-    let trs = TRS::get(&host).await?;
-    let golden_aggregate_hex = trs.get_boot_aggregate_hash()?;
-
-    let algo = response.evidence.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;
-    let server_boot_aggregate_hash = response.evidence.get_boot_aggregate_hash(algo.clone())?;
-
-    if golden_aggregate_hex == server_boot_aggregate_hash {
-        info!("Boot aggregate hash matches");
-    } else {
-        return Err(format!("Boot aggregate hash mismatch").into());
-    }
-
-    let (algo_name, expected_pcr10_value) = match trs.ima_calculate() {
-        Ok(result) => result,
-        Err(e) => {
-            error!("Error calculating IMA: {}", e);
-            return Err(e.into());
-        }
-    };
-    let expected_pcr10_value_hex = hex::encode(&expected_pcr10_value);
-    debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), expected_pcr10_value_hex);
-    
-    let actual_pcr10_value_hex = match response.evidence.get_pcr(algo, 10) {
-        Ok(pcr) => hex::encode(pcr),
-        Err(e) => {
-            error!("Failed to get PCR 10: {}", e);
-            String::from("PCR 10 not found")
-        }
-    };
-    debug!("Server's PCR 10: {}: 0x{}", algo_name.to_str(), actual_pcr10_value_hex);
-
-    if expected_pcr10_value_hex == actual_pcr10_value_hex {
-        info!("PCR 10 matches");
-    } else {
-        return Err(format!("PCR 10 mismatch").into());
-    }
+    response.evidence.verify(super_nonce, host)
+        .await.map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
 
     let certificate = X509::from_pem(&response.certificate)
         .map_err(|err| format!("Failed to parse aTLS certificate. Error: {}", err))?;

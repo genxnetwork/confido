@@ -8,8 +8,10 @@ use std::env;
 use tokio::net::lookup_host;
 use reqwest::Url;
 use ring::digest::{Context, SHA1_FOR_LEGACY_USE_ONLY};
+use crate::atls::ModuleLoadOrder;
+use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct IMALogEntry {
     name: String,
     #[serde(rename = "PCR")]
@@ -81,9 +83,31 @@ impl TRS {
         }
     }
 
-    fn ima_sig(&self) -> (vtpm::Algorithm, Vec<u8>) {
+    fn ima_sort(&self, module_load_order: &ModuleLoadOrder) -> Vec<IMALogEntry> {
+        // Create a HashMap where the keys are the module names and the values are the measurements
+        let measurements_map: HashMap<_, _> = self.ima_measurements.iter().map(|m| (&m.name, m)).collect();
+        // Create a vector to hold the sorted measurements
+        let sorted_measurements: Vec<IMALogEntry> = module_load_order.order.iter()
+            .filter_map(|module_name| measurements_map.get(module_name).cloned().cloned())
+            .collect();
+
+        for (ima_measurement, sorted_measurement) in self.ima_measurements.iter().zip(sorted_measurements.iter()) {
+            let match_status = if ima_measurement.name == sorted_measurement.name {
+                "Match"
+            } else {
+                "No Match"
+            };
+            debug!("{:<50} {:<50} {}", ima_measurement.name, sorted_measurement.name, match_status);
+        }
+
+        sorted_measurements
+    }
+
+    fn ima_sig(&self, module_load_order: &ModuleLoadOrder) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_pcr = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
-        for measurement in &self.ima_measurements {
+        let sorted_measurements = self.ima_sort(module_load_order);
+
+        for measurement in sorted_measurements.iter() {
             let mut ima_data = vec![];
     
             let algo = "sha256:";
@@ -145,12 +169,13 @@ impl TRS {
     //     (vtpm::Algorithm::Sha1, pcr.get())
     // }
 
-    fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
+    fn ima_ng(&self, module_load_order: &ModuleLoadOrder) -> (vtpm::Algorithm, Vec<u8>) {
         let mut aggregated_value = "0000000000000000000000000000000000000000".to_string(); // initial value
-    
-        for measurement in &self.ima_measurements {
+        let sorted_measurements = self.ima_sort(module_load_order);
+
+        for measurement in sorted_measurements.iter() { // self.ima_measurements.iter()
             let hash_value = measurement.template_hash.clone();
-            debug!("ima-ng: {}", measurement.name);
+            debug!("ima-ng: {}, hash_value: {}", measurement.name, hash_value);
     
             // The hexadecimal string to be hashed
             let concatenated_string = aggregated_value + &hash_value;
@@ -171,7 +196,7 @@ impl TRS {
         (vtpm::Algorithm::Sha1, hex::decode(aggregated_value).expect("Failed to decode hex string"))
     }
 
-    pub fn ima_calculate(&self) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+    pub fn ima_calculate(&self, module_load_order: &ModuleLoadOrder) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
         let template = match self.ima_measurements.get(0) {
             Some(first_measurement) => &first_measurement.ima_template,
             None => {
@@ -186,8 +211,8 @@ impl TRS {
         // Check if all records have the same template
         if self.ima_measurements.iter().all(|measurement| measurement.ima_template == *template) {
             match template.as_str() {
-                "ima-ng" => Ok(self.ima_ng()),
-                "ima-sig" => Ok(self.ima_sig()),
+                "ima-ng" => Ok(self.ima_ng(&module_load_order)),
+                "ima-sig" => Ok(self.ima_sig(&module_load_order)),
                 _ => Err("No known IMA template found in records"),
             }
         } else {
