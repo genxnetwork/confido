@@ -3,16 +3,20 @@ use az_snp_vtpm::report::{AttestationReport, Validateable};
 use az_snp_vtpm::{amd_kds, vtpm};
 use openssl::pkey::PKey;
 use std::error::Error;
-use log::{info, debug};
+use log::{info, debug, error};
 use crate::nonce;
 use nonce::Nonce;
 use serde::{Serialize, Deserialize};
 use std::fmt;
+use crate::atls::ModuleLoadOrder;
+use crate::trs::TRS;
 
 #[derive(Serialize, Deserialize)]
 pub struct Evidence {
     pub report: Vec<u8>,
     quote: vtpm::Quote,
+    cgpu_attestation: serde_json::Value,
+    module_load_order: ModuleLoadOrder,
 }
 
 impl fmt::Debug for Evidence {
@@ -27,11 +31,11 @@ impl fmt::Debug for Evidence {
 }
 
 impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote) -> Self {
-        Evidence {report, quote}
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder) -> Self {
+        Evidence {report, quote, cgpu_attestation, module_load_order}
     }
 
-    pub fn verify(&self, nonce: &Nonce) -> Result<(), Box<dyn Error>> {    
+    pub async fn verify(&self, nonce: &Nonce, host: &str) -> Result<(), Box<dyn Error>> {    
         let hcl_report = HclReport::new(self.report.clone())?;
         let var_data_hash = hcl_report.var_data_sha256();
         let ak_pub = hcl_report.ak_pub()?;
@@ -51,6 +55,45 @@ impl Evidence {
         let der = ak_pub.key.try_to_der()?;
         let pub_key = PKey::public_key_from_der(&der)?;
         self.quote.verify(&pub_key, nonce.as_bytes())?; // verifies signature and pcrs
+
+        // part 2
+
+        let trs = TRS::get(&host).await?;
+        let golden_aggregate_hex = trs.get_boot_aggregate_hash()?;
+    
+        let algo = self.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;
+        let server_boot_aggregate_hash = self.get_boot_aggregate_hash(algo.clone())?;
+    
+        if golden_aggregate_hex == server_boot_aggregate_hash {
+            info!("Boot aggregate hash matches");
+        } else {
+            return Err(format!("Boot aggregate hash mismatch").into());
+        }
+    
+        let (algo_name, expected_pcr10_value) = match trs.ima_calculate(&self.module_load_order) {
+            Ok(result) => result,
+            Err(e) => {
+                error!("Error calculating IMA: {}", e);
+                return Err(e.into());
+            }
+        };
+        let expected_pcr10_value_hex = hex::encode(&expected_pcr10_value);
+        debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), expected_pcr10_value_hex);
+        
+        let actual_pcr10_value_hex = match self.get_pcr(algo, 10) {
+            Ok(pcr) => hex::encode(pcr),
+            Err(e) => {
+                error!("Failed to get PCR 10: {}", e);
+                String::from("PCR 10 not found")
+            }
+        };
+        debug!("Server's PCR 10: {}: 0x{}", algo_name.to_str(), actual_pcr10_value_hex);
+    
+        if expected_pcr10_value_hex == actual_pcr10_value_hex {
+            info!("PCR 10 matches");
+        } else {
+            return Err(format!("PCR 10 mismatch").into());
+        }
 
         info!("Evidence successfully verified");
     

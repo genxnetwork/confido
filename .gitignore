@@ -16,3 +16,6 @@ Cargo.lock
 **/*.pem
 evidence
 **/.venv
+
+server/nvtrust
+**/*.log
