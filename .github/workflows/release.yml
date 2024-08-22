@@ -45,7 +45,7 @@ jobs:
       run: |
         mkdir -p package/server/DEBIAN
         echo "Package: confido-server" > package/server/DEBIAN/control
-        echo "Version: ${GITHUB_REF#refs/tags/}" >> package/server/DEBIAN/control
+        echo "Version: ${GITHUB_REF#refs/tags/v}" >> package/server/DEBIAN/control
         echo "Section: base" >> package/server/DEBIAN/control
         echo "Priority: optional" >> package/server/DEBIAN/control
         echo "Architecture: amd64" >> package/server/DEBIAN/control
@@ -59,7 +59,7 @@ jobs:
       run: |
         mkdir -p package/client/DEBIAN
         echo "Package: confido-client" > package/client/DEBIAN/control
-        echo "Version: ${GITHUB_REF#refs/tags/}" >> package/client/DEBIAN/control
+        echo "Version: ${GITHUB_REF#refs/tags/v}" >> package/client/DEBIAN/control
         echo "Section: base" >> package/client/DEBIAN/control
         echo "Priority: optional" >> package/client/DEBIAN/control
         echo "Architecture: amd64" >> package/client/DEBIAN/control
