@@ -8,14 +8,14 @@ on:
 jobs:
   build:
     name: Build and Package
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, cvm-amd]  # Указываем группу раннеров
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
     - name: Set up Rust
-      uses: actions/setup-rust@v1
+      uses: actions-rs/toolchain@v1  # Исправляем путь к действию
       with:
         toolchain: stable
 
@@ -42,7 +42,7 @@ jobs:
         echo "Section: base" >> package/server/DEBIAN/control
         echo "Priority: optional" >> package/server/DEBIAN/control
         echo "Architecture: amd64" >> package/server/DEBIAN/control
-        echo "Maintainer: Your Name <youremail@example.com>" >> package/server/DEBIAN/control
+        echo "Maintainer: Grigorii Bezborodov <g.bezborodov@genomex.io>" >> package/server/DEBIAN/control
         echo "Description: Confido Server" >> package/server/DEBIAN/control
         mkdir -p package/server/usr/local/bin
         cp ./server/confido-server package/server/usr/local/bin/confido-server
@@ -56,7 +56,7 @@ jobs:
         echo "Section: base" >> package/client/DEBIAN/control
         echo "Priority: optional" >> package/client/DEBIAN/control
         echo "Architecture: amd64" >> package/client/DEBIAN/control
-        echo "Maintainer: Your Name <youremail@example.com>" >> package/client/DEBIAN/control
+        echo "Maintainer: Grigorii Bezborodov <g.bezborodov@genomex.io>" >> package/client/DEBIAN/control
         echo "Description: Confido Client" >> package/client/DEBIAN/control
         mkdir -p package/client/usr/local/bin
         cp ./client/confido-client package/client/usr/local/bin/confido-client
