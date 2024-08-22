@@ -48,8 +48,8 @@ jobs:
     - name: Create Debian Package for Server
       run: |
         mkdir -p package/server/DEBIAN
-        echo "Package: confido-server" > package/server/DEBIAN/control
         VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Package: confido-server" > package/server/DEBIAN/control
         echo "Version: $VERSION" >> package/server/DEBIAN/control
         echo "Section: base" >> package/server/DEBIAN/control
         echo "Priority: optional" >> package/server/DEBIAN/control
@@ -77,8 +77,8 @@ jobs:
     - name: Create Debian Package for Client
       run: |
         mkdir -p package/client/DEBIAN
-        echo "Package: confido-client" > package/client/DEBIAN/control
         VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Package: confido-client" > package/client/DEBIAN/control
         echo "Version: $VERSION" >> package/client/DEBIAN/control
         echo "Section: base" >> package/client/DEBIAN/control
         echo "Priority: optional" >> package/client/DEBIAN/control
@@ -115,7 +115,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/server.deb
-        asset_name: confido-server.$VERSION.deb
+        asset_name: confido-server.${{ steps.create_version.outputs.VERSION }}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
@@ -125,5 +125,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/client.deb
-        asset_name: confido-client.$VERSION.deb
+        asset_name: confido-client.${{ steps.create_version.outputs.VERSION }}.deb
         asset_content_type: application/octet-stream
