@@ -17,7 +17,7 @@ jobs:
     - name: Clone azure-cvm-tooling
       run: |
         git clone https://github.com/genxnetwork/azure-cvm-tooling.git
-        ln -s $GITHUB_WORKSPACE/azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm $GITHUB_WORKSPACE/server/az-snp-vtpm
+        ln -s $GITHUB_WORKSPACE/azure-cvm-tooling $GITHUB_WORKSPACE/../
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1  
