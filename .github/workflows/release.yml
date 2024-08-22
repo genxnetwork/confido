@@ -20,7 +20,7 @@ jobs:
         ln -s $GITHUB_WORKSPACE/azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm $GITHUB_WORKSPACE/server/az-snp-vtpm
 
     - name: Set up Rust
-      uses: actions/setup-rust@v1.8.0
+      uses: actions-rs/toolchain@v1  
       with:
         toolchain: stable
 
