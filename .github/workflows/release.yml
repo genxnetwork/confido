@@ -57,7 +57,23 @@ jobs:
         echo "Description: Confido Server" >> package/server/DEBIAN/control
         mkdir -p package/server/usr/local/bin
         cp ./server/confido-server package/server/usr/local/bin/confido-server
+        mkdir -p package/server/etc/systemd/system
+        cp ./server/deployment/systemd-confido.service package/server/etc/systemd/system/confido.service
+        cat << 'EOF' > package/server/DEBIAN/postinst
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ] || [ "$1" = "upgrade" ]; then
+    if ! systemctl is-enabled confido.service > /dev/null 2>&1; then
+        systemctl enable confido.service
+    fi
+    systemctl daemon-reload
+    systemctl restart confido.service
+fi
+EOF
+        chmod +x package/server/DEBIAN/postinst
         dpkg-deb --build package/server
+
 
     - name: Create Debian Package for Client
       run: |
@@ -99,7 +115,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/server.deb
-        asset_name: confido-server.${GITHUB_REF#refs/tags/v}.deb
+        asset_name: confido-server.${{ GITHUB_REF#refs/tags/v }}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
@@ -109,5 +125,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/client.deb
-        asset_name: confido-client.${GITHUB_REF#refs/tags/v}.deb
+        asset_name: confido-client.${{ GITHUB_REF#refs/tags/v }}.deb
         asset_content_type: application/octet-stream
