@@ -49,7 +49,8 @@ jobs:
       run: |
         mkdir -p package/server/DEBIAN
         echo "Package: confido-server" > package/server/DEBIAN/control
-        echo "Version: ${GITHUB_REF#refs/tags/v}" >> package/server/DEBIAN/control
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Version: $VERSION" >> package/server/DEBIAN/control
         echo "Section: base" >> package/server/DEBIAN/control
         echo "Priority: optional" >> package/server/DEBIAN/control
         echo "Architecture: amd64" >> package/server/DEBIAN/control
@@ -59,27 +60,26 @@ jobs:
         cp ./server/confido-server package/server/usr/local/bin/confido-server
         mkdir -p package/server/etc/systemd/system
         cp ./server/deployment/systemd-confido.service package/server/etc/systemd/system/confido.service
-        cat << 'EOF' > package/server/DEBIAN/postinst
-#!/bin/sh
-set -e
 
-if [ "$1" = "configure" ] || [ "$1" = "upgrade" ]; then
-    if ! systemctl is-enabled confido.service > /dev/null 2>&1; then
-        systemctl enable confido.service
-    fi
-    systemctl daemon-reload
-    systemctl restart confido.service
-fi
-EOF
+        echo '#!/bin/sh' > package/server/DEBIAN/postinst
+        echo 'set -e' >> package/server/DEBIAN/postinst
+        echo 'if [ "$1" = "configure" ] || [ "$1" = "upgrade" ]; then' >> package/server/DEBIAN/postinst
+        echo '    if ! systemctl is-enabled confido.service > /dev/null 2>&1; then' >> package/server/DEBIAN/postinst
+        echo '        systemctl enable confido.service' >> package/server/DEBIAN/postinst
+        echo '    fi' >> package/server/DEBIAN/postinst
+        echo '    systemctl daemon-reload' >> package/server/DEBIAN/postinst
+        echo '    systemctl restart confido.service' >> package/server/DEBIAN/postinst
+        echo 'fi' >> package/server/DEBIAN/postinst
         chmod +x package/server/DEBIAN/postinst
-        dpkg-deb --build package/server
 
+        dpkg-deb --build package/server
 
     - name: Create Debian Package for Client
       run: |
         mkdir -p package/client/DEBIAN
         echo "Package: confido-client" > package/client/DEBIAN/control
-        echo "Version: ${GITHUB_REF#refs/tags/v}" >> package/client/DEBIAN/control
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Version: $VERSION" >> package/client/DEBIAN/control
         echo "Section: base" >> package/client/DEBIAN/control
         echo "Priority: optional" >> package/client/DEBIAN/control
         echo "Architecture: amd64" >> package/client/DEBIAN/control
@@ -115,7 +115,7 @@ EOF
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/server.deb
-        asset_name: confido-server.${{ GITHUB_REF#refs/tags/v }}.deb
+        asset_name: confido-server.$VERSION.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
@@ -125,5 +125,5 @@ EOF
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: package/client.deb
-        asset_name: confido-client.${{ GITHUB_REF#refs/tags/v }}.deb
+        asset_name: confido-client.$VERSION.deb
         asset_content_type: application/octet-stream
