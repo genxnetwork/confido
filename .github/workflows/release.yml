@@ -117,8 +117,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-server.${{ env.VERSION }}.deb
-        asset_name: confido-server.${{ env.VERSION }}.deb
+        asset_path: package/confido-server.${VERSION}.deb
+        asset_name: confido-server.${VERSION}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
@@ -127,7 +127,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client.${{ env.VERSION }}.deb
-        asset_name: confido-client.${{ env.VERSION }}.deb
+        asset_path: package/confido-client.${VERSION}.deb
+        asset_name: confido-client.${VERSION}.deb
         asset_content_type: application/octet-stream
-
