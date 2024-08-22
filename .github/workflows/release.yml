@@ -112,21 +112,23 @@ jobs:
         prerelease: false
 
     - name: Upload Server Package
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Uploading server package: confido-server.$VERSION.deb"
       uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-server.${VERSION}.deb
-        asset_name: confido-server.${VERSION}.deb
+        asset_path: package/confido-server.${GITHUB_REF#refs/tags/v}.deb
+        asset_name: confido-server.${GITHUB_REF#refs/tags/v}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Uploading client package: confido-client.$VERSION.deb"
       uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client.${VERSION}.deb
-        asset_name: confido-client.${VERSION}.deb
+        asset_path: package/confido-client.${GITHUB_REF#refs/tags/v}.deb
+        asset_name: confido-client.${GITHUB_REF#refs/tags/v}.deb
         asset_content_type: application/octet-stream
