@@ -98,37 +98,25 @@ jobs:
         HASH=$(sha256sum package/confido-server.${GITHUB_REF#refs/tags/v}.deb | cut -d ' ' -f 1)
         echo "HASH=$HASH" >> $GITHUB_ENV
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Upload Server Package
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+    - name: Upload Server Package
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: "Release ${{ github.ref }}"
-        body: |
-          **Server Package Hash:** ${{ env.HASH }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Server Package
-      run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "Uploading server package: confido-server.$VERSION.deb"
-      uses: actions/upload-release-asset@v1
-      with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-server.${GITHUB_REF#refs/tags/v}.deb
-        asset_name: confido-server.${GITHUB_REF#refs/tags/v}.deb
+        asset_path: package/confido-server.${{ env.VERSION }}.deb
+        asset_name: confido-server.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
-      run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "Uploading client package: confido-client.$VERSION.deb"
       uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client.${GITHUB_REF#refs/tags/v}.deb
-        asset_name: confido-client.${GITHUB_REF#refs/tags/v}.deb
+        asset_path: package/confido-client.${{ env.VERSION }}.deb
+        asset_name: confido-client.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
