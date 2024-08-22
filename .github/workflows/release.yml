@@ -101,8 +101,6 @@ jobs:
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
         release_name: "Release ${{ github.ref }}"
@@ -110,6 +108,8 @@ jobs:
           **Server Package Hash:** ${{ env.HASH }}
         draft: false
         prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Server Package
       uses: actions/upload-release-asset@v1
@@ -118,6 +118,8 @@ jobs:
         asset_path: package/confido-server.${{ env.VERSION }}.deb
         asset_name: confido-server.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Client Package
       uses: actions/upload-release-asset@v1
@@ -126,3 +128,7 @@ jobs:
         asset_path: package/confido-client.${{ env.VERSION }}.deb
         asset_name: confido-client.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
