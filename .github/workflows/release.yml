@@ -3,19 +3,24 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # Срабатывание на пуш тегов, например, v1.0.0
+      - 'v*.*.*'
 
 jobs:
   build:
     name: Build and Package
-    runs-on: [self-hosted, cvm-amd]  # Указываем группу раннеров
+    runs-on: [self-hosted, cvm-amd]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Clone azure-cvm-tooling
+      run: |
+        git clone https://github.com/genxnetwork/azure-cvm-tooling.git
+        ln -s $GITHUB_WORKSPACE/azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm $GITHUB_WORKSPACE/server/az-snp-vtpm
+
     - name: Set up Rust
-      uses: actions-rs/toolchain@v1  # Исправляем путь к действию
+      uses: actions/setup-rust@v1
       with:
         toolchain: stable
 
