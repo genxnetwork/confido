@@ -33,7 +33,7 @@ jobs:
       run: |
         cd server
         cargo build --release
-        cp target/release/confido-server ./confido-server
+        cp target/release/confido_server ./confido-server
 
     - name: Build Client Package
       run: |
