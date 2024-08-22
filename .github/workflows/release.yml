@@ -1,0 +1,102 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Срабатывание на пуш тегов, например, v1.0.0
+
+jobs:
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      uses: actions/setup-rust@v1
+      with:
+        toolchain: stable
+
+    - name: Install Dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev
+
+    - name: Build Server Package
+      run: |
+        cd server
+        cargo build --release
+        cp target/release/confido-server ./confido-server
+
+    - name: Build Client Package
+      run: |
+        cd client
+        cargo build --release
+        cp target/release/confido-client ./confido-client
+
+    - name: Create Debian Package for Server
+      run: |
+        mkdir -p package/server/DEBIAN
+        echo "Package: confido-server" > package/server/DEBIAN/control
+        echo "Version: ${GITHUB_REF#refs/tags/}" >> package/server/DEBIAN/control
+        echo "Section: base" >> package/server/DEBIAN/control
+        echo "Priority: optional" >> package/server/DEBIAN/control
+        echo "Architecture: amd64" >> package/server/DEBIAN/control
+        echo "Maintainer: Your Name <youremail@example.com>" >> package/server/DEBIAN/control
+        echo "Description: Confido Server" >> package/server/DEBIAN/control
+        mkdir -p package/server/usr/local/bin
+        cp ./server/confido-server package/server/usr/local/bin/confido-server
+        dpkg-deb --build package/server
+
+    - name: Create Debian Package for Client
+      run: |
+        mkdir -p package/client/DEBIAN
+        echo "Package: confido-client" > package/client/DEBIAN/control
+        echo "Version: ${GITHUB_REF#refs/tags/}" >> package/client/DEBIAN/control
+        echo "Section: base" >> package/client/DEBIAN/control
+        echo "Priority: optional" >> package/client/DEBIAN/control
+        echo "Architecture: amd64" >> package/client/DEBIAN/control
+        echo "Maintainer: Your Name <youremail@example.com>" >> package/client/DEBIAN/control
+        echo "Description: Confido Client" >> package/client/DEBIAN/control
+        mkdir -p package/client/usr/local/bin
+        cp ./client/confido-client package/client/usr/local/bin/confido-client
+        dpkg-deb --build package/client
+
+    - name: Calculate Hash of Server Binary
+      id: calculate_hash
+      run: |
+        HASH=$(sha256sum package/server/usr/local/bin/confido-server | cut -d ' ' -f 1)
+        echo "HASH=$HASH" >> $GITHUB_ENV
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: "Release ${{ github.ref }}"
+        body: |
+          **Server Package Hash:** ${{ env.HASH }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Server Package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: package/server.deb
+        asset_name: confido-server-${{ github.ref }}.deb
+        asset_content_type: application/octet-stream
+
+    - name: Upload Client Package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: package/client.deb
+        asset_name: confido-client-${{ github.ref }}.deb
+        asset_content_type: application/octet-stream
