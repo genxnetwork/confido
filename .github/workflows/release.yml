@@ -95,7 +95,7 @@ jobs:
     - name: Calculate Hash of Server Binary
       id: calculate_hash
       run: |
-        HASH=$(sha256sum package/confido-server.${GITHUB_REF#refs/tags/v}.deb | cut -d ' ' -f 1)
+        HASH=$(sha256sum package/confido-server-${GITHUB_REF#refs/tags/v}.deb | cut -d ' ' -f 1)
         echo "HASH=$HASH" >> $GITHUB_ENV
 
     - name: Create Release
