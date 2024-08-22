@@ -74,6 +74,7 @@ jobs:
 
         dpkg-deb --build package/server
         mv package/server.deb package/confido-server.$VERSION.deb
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Create Debian Package for Client
       run: |
@@ -112,20 +113,16 @@ jobs:
 
     - name: Upload Server Package
       uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-server.${GITHUB_REF#refs/tags/v}.deb
-        asset_name: confido-server.${GITHUB_REF#refs/tags/v}.deb
+        asset_path: package/confido-server.${{ env.VERSION }}.deb
+        asset_name: confido-server.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
 
     - name: Upload Client Package
       uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client.${GITHUB_REF#refs/tags/v}.deb
-        asset_name: confido-client.${GITHUB_REF#refs/tags/v}.deb
+        asset_path: package/confido-client.${{ env.VERSION }}.deb
+        asset_name: confido-client.${{ env.VERSION }}.deb
         asset_content_type: application/octet-stream
