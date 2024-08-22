@@ -39,7 +39,7 @@ jobs:
       run: |
         cd client
         cargo build --release
-        cp target/release/confido-client ./confido-client
+        cp target/release/confido_client ./confido-client
 
     - name: Create Debian Package for Server
       run: |
