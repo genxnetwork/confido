@@ -16,7 +16,6 @@ use openssl::nid::Nid;
 use openssl::x509::X509NameBuilder;
 use openssl::pkey::PKey;
 use openssl::pkey::Private;
-use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
 use serde_json::Value;
@@ -155,6 +154,21 @@ impl Attester {
         Ok(ModuleLoadOrder { kernel, order })
     }
 
+    fn read_dmesg() -> io::Result<Vec<String>> {
+        let path = Path::new("/var/log/dmesg");
+        let file = File::open(&path)?;
+        let reader = io::BufReader::new(file);
+
+        let mut lines = Vec::new();
+        for line_result in reader.lines() {
+            let line = line_result?;
+            debug!("{}", line);
+            lines.push(line);
+        }
+
+        Ok(lines)
+    }
+
     pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
         let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
@@ -169,8 +183,16 @@ impl Attester {
             }
         };
         let docker_containers = get_running_containers().await;
-        // info!("module_order: {:?}", module_order);
-        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers))
+        info!("cgpu_attestation: {:?}", cgpu_attestation);
+        let dmesg = match Self::read_dmesg() {
+            Ok(lines) => lines,
+            Err(e) => {
+                eprintln!("Failed to read dmesg: {}", e);
+                return Err(e.into());
+            }
+        };
+        error!("dmesg: {:?}", dmesg);
+        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers, dmesg))
     }
 }
 

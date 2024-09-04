@@ -19,6 +19,7 @@ pub struct Evidence {
     cgpu_attestation: serde_json::Value,
     module_load_order: ModuleLoadOrder,
     pub docker_containers: Value,
+    dmesg: Vec<String>,
 }
 
 impl fmt::Debug for Evidence {
@@ -33,8 +34,8 @@ impl fmt::Debug for Evidence {
 }
 
 impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder, docker_containers: serde_json::Value) -> Self {
-        Evidence {report, quote, cgpu_attestation, module_load_order, docker_containers}
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder, docker_containers: serde_json::Value, dmesg: Vec<String>) -> Self {
+        Evidence {report, quote, cgpu_attestation, module_load_order, docker_containers, dmesg}
     }
 
     pub async fn verify(&self, nonce: &Nonce, host: &str) -> Result<(), Box<dyn Error>> {    
