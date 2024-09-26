@@ -48,44 +48,43 @@ jobs:
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        cat > rpmbuild/SPECS/confido-server.spec <<EOF
-Name: confido-server
-Version: $VERSION
-Release: 1%{?dist}
-Summary: Confido Server
+        cat > rpmbuild/SPECS/confido-server.spec <<-EOF
+          Name: confido-server
+          Version: $VERSION
+          Release: 1%{?dist}
+          Summary: Confido Server
 
-License: Proprietary
-URL: https://github.com/your-repo/confido
+          License: Proprietary
+          URL: https://github.com/your-repo/confido
 
- %description
-Confido Server
+          %description
+          Confido Server
 
- %prep
+          %prep
 
- %build
+          %build
 
- %install
-mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 ./server/confido-server %{buildroot}/usr/local/bin/confido-server
-mkdir -p %{buildroot}/etc/systemd/system
-install -m 0644 ./server/deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
+          %install
+          mkdir -p %{buildroot}/usr/local/bin
+          install -m 0755 ./confido-server %{buildroot}/usr/local/bin/confido-server
+          mkdir -p %{buildroot}/etc/systemd/system
+          install -m 0644 ./deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
 
- %post
-if [ \$1 -eq 1 ] ; then
-  systemctl enable confido.service
-  systemctl daemon-reload
-  systemctl restart confido.service
-fi
+          %post
+          if [ \$1 -eq 1 ] ; then
+            systemctl enable confido.service
+            systemctl daemon-reload
+            systemctl restart confido.service
+          fi
 
- %files
-/usr/local/bin/confido-server
-/etc/systemd/system/confido.service
+          %files
+          /usr/local/bin/confido-server
+          /etc/systemd/system/confido.service
 
- %changelog
-* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
-- Initial RPM release
-
-EOF
+          %changelog
+          * $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
+          - Initial RPM release
+        EOF
 
         rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-server.spec
         mkdir -p package
@@ -96,34 +95,33 @@ EOF
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        cat > rpmbuild/SPECS/confido-client.spec <<EOF
-Name: confido-client
-Version: $VERSION
-Release: 1%{?dist}
-Summary: Confido Client
+        cat > rpmbuild/SPECS/confido-client.spec <<-EOF
+          Name: confido-client
+          Version: $VERSION
+          Release: 1%{?dist}
+          Summary: Confido Client
 
-License: Proprietary
-URL: https://github.com/your-repo/confido
+          License: Proprietary
+          URL: https://github.com/your-repo/confido
 
- %description
-Confido Client
+          %description
+          Confido Client
 
- %prep
+          %prep
 
- %build
+          %build
 
- %install
-mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 ./client/confido-client %{buildroot}/usr/local/bin/confido-client
+          %install
+          mkdir -p %{buildroot}/usr/local/bin
+          install -m 0755 ./confido-client %{buildroot}/usr/local/bin/confido-client
 
- %files
-/usr/local/bin/confido-client
+          %files
+          /usr/local/bin/confido-client
 
- %changelog
-* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
-- Initial RPM release
-
-EOF
+          %changelog
+          * $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
+          - Initial RPM release
+        EOF
 
         rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-client.spec
         cp rpmbuild/RPMS/x86_64/confido-client-$VERSION-1*.rpm package/confido-client-$VERSION.rpm
