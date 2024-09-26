@@ -64,8 +64,8 @@ jobs:
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Use the pre-existing spec file from the repository
-        cp ./specs/confido-server.spec rpmbuild/SPECS/
+        # Use the correct path to the spec file in the repository
+        cp ./server/specs/confido-server.spec rpmbuild/SPECS/
 
         # Update version in the spec file
         sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-server.spec
@@ -81,8 +81,8 @@ jobs:
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Use the pre-existing spec file from the repository
-        cp ./specs/confido-client.spec rpmbuild/SPECS/
+        # Use the correct path to the spec file in the repository
+        cp ./client/specs/confido-client.spec rpmbuild/SPECS/
 
         # Update version in the spec file
         sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-client.spec
@@ -129,4 +129,3 @@ jobs:
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
