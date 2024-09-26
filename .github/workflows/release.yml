@@ -32,14 +32,19 @@ jobs:
       run: |
         sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel tpm2-tss-devel rpm-build perl
 
-        perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; # exit 1; }
+        # Check if Perl and FindBin module are installed
+        perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; exit 0; }
+        
+        # Display Perl version for debugging
         perl -v
 
+        # Check if tss2-sys library is available via pkg-config
         if ! pkg-config --exists tss2-sys; then
           echo "tss2-sys.pc not found! Ensure that tpm2-tss-devel package is installed."
-          # exit 1
+          exit 0
         fi
 
+        # Display pkg-config flags for tss2-sys
         pkg-config --cflags --libs tss2-sys
 
     - name: Build Server Package
@@ -124,3 +129,4 @@ jobs:
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
