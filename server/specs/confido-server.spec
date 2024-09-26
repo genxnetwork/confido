@@ -15,9 +15,9 @@ Confido Server
 
 %install
 mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 ./confido-server %{buildroot}/usr/local/bin/confido-server
+install -m 0755 %{buildroot}/../../../server/target/release/confido_server %{buildroot}/usr/local/bin/confido-server
 mkdir -p %{buildroot}/etc/systemd/system
-install -m 0644 ./deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
+install -m 0644 %{buildroot}/../../../server/deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
 
 %post
 if [ \$1 -eq 1 ] ; then
