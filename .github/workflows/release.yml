@@ -30,22 +30,16 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        # Install necessary development tools and libraries
         sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel tpm2-tss-devel rpm-build perl
 
-        # Check if Perl and FindBin module are installed
         perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; # exit 1; }
-
-        # (Optional) Display Perl version for debugging
         perl -v
 
-        # Check if tss2-sys library is available via pkg-config
         if ! pkg-config --exists tss2-sys; then
           echo "tss2-sys.pc not found! Ensure that tpm2-tss-devel package is installed."
           # exit 1
         fi
 
-        # (Optional) Display pkg-config flags for tss2-sys
         pkg-config --cflags --libs tss2-sys
 
     - name: Build Server Package
@@ -65,47 +59,11 @@ jobs:
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Create the spec file using a block scalar to handle % symbols correctly
-        cat > rpmbuild/SPECS/confido-server.spec <<'EOF'
-Name: confido-server
-Version: $VERSION
-Release: 1%{?dist}
-Summary: Confido Server
+        # Use the pre-existing spec file from the repository
+        cp ./specs/confido-server.spec rpmbuild/SPECS/
 
-License: Proprietary
-URL: https://github.com/genxnetwork/confido
-
-%description
-Confido Server
-
-%prep
-
-%build
-
-%install
-mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 ./confido-server %{buildroot}/usr/local/bin/confido-server
-mkdir -p %{buildroot}/etc/systemd/system
-install -m 0644 ./deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
-
-%post
-if [ \$1 -eq 1 ] ; then
-  systemctl enable confido.service
-  systemctl daemon-reload
-  systemctl restart confido.service
-fi
-
-%files
-/usr/local/bin/confido-server
-/etc/systemd/system/confido.service
-
-%changelog
-* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genxnetwork.io> - $VERSION-1
-- Initial RPM release
-EOF
-
-        # (Optional) Validate the spec file
-        # rpmbuild -T -bb rpmbuild/SPECS/confido-server.spec || { echo "Spec file validation failed!"; # exit 1; }
+        # Update version in the spec file
+        sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-server.spec
 
         # Build the RPM package
         rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-server.spec
@@ -118,37 +76,11 @@ EOF
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
-        # Create the spec file using a block scalar to handle % symbols correctly
-        cat > rpmbuild/SPECS/confido-client.spec <<'EOF'
-Name: confido-client
-Version: $VERSION
-Release: 1%{?dist}
-Summary: Confido Client
+        # Use the pre-existing spec file from the repository
+        cp ./specs/confido-client.spec rpmbuild/SPECS/
 
-License: Proprietary
-URL: https://github.com/genxnetwork/confido
-
-%description
-Confido Client
-
-%prep
-
-%build
-
-%install
-mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 ./confido-client %{buildroot}/usr/local/bin/confido-client
-
-%files
-/usr/local/bin/confido-client
-
-%changelog
-* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genxnetwork.io> - $VERSION-1
-- Initial RPM release
-EOF
-
-        # (Optional) Validate the spec file
-        # rpmbuild -T -bb rpmbuild/SPECS/confido-client.spec || { echo "Spec file validation failed!"; # exit 1; }
+        # Update version in the spec file
+        sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-client.spec
 
         # Build the RPM package
         rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-client.spec
