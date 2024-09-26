@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     name: Build and Package
-    runs-on: [self-hosted, cvm-amd]
+    runs-on: [self-hosted, imf-fedora39]
 
     steps:
     - name: Checkout repository
@@ -24,14 +24,13 @@ jobs:
         ln -sfn $GITHUB_WORKSPACE/azure-cvm-tooling $GITHUB_WORKSPACE/../
 
     - name: Set up Rust
-      uses: actions-rs/toolchain@v1  
+      uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
 
     - name: Install Dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libssl-dev pkg-config libtss2-dev
+        sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel rpm-build
 
     - name: Build Server Package
       run: |
@@ -45,57 +44,94 @@ jobs:
         cargo build --release
         cp target/release/confido_client ./confido-client
 
-    - name: Create Debian Package for Server
+    - name: Create RPM Package for Server
       run: |
-        mkdir -p package/server/DEBIAN
         VERSION=${GITHUB_REF#refs/tags/v}
-        echo "Package: confido-server" > package/server/DEBIAN/control
-        echo "Version: $VERSION" >> package/server/DEBIAN/control
-        echo "Section: base" >> package/server/DEBIAN/control
-        echo "Priority: optional" >> package/server/DEBIAN/control
-        echo "Architecture: amd64" >> package/server/DEBIAN/control
-        echo "Maintainer: Grigorii Bezborodov <g.bezborodov@genomex.io>" >> package/server/DEBIAN/control
-        echo "Description: Confido Server" >> package/server/DEBIAN/control
-        mkdir -p package/server/usr/local/bin
-        cp ./server/confido-server package/server/usr/local/bin/confido-server
-        mkdir -p package/server/etc/systemd/system
-        cp ./server/deployment/systemd-confido.service package/server/etc/systemd/system/confido.service
+        mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        cat > rpmbuild/SPECS/confido-server.spec <<EOF
+Name: confido-server
+Version: $VERSION
+Release: 1%{?dist}
+Summary: Confido Server
 
-        echo '#!/bin/sh' > package/server/DEBIAN/postinst
-        echo 'set -e' >> package/server/DEBIAN/postinst
-        echo 'if [ "$1" = "configure" ] || [ "$1" = "upgrade" ]; then' >> package/server/DEBIAN/postinst
-        echo '    if ! systemctl is-enabled confido.service > /dev/null 2>&1; then' >> package/server/DEBIAN/postinst
-        echo '        systemctl enable confido.service' >> package/server/DEBIAN/postinst
-        echo '    fi' >> package/server/DEBIAN/postinst
-        echo '    systemctl daemon-reload' >> package/server/DEBIAN/postinst
-        echo '    systemctl restart confido.service' >> package/server/DEBIAN/postinst
-        echo 'fi' >> package/server/DEBIAN/postinst
-        chmod +x package/server/DEBIAN/postinst
+License: Proprietary
+URL: https://github.com/genxnetwork/confido
 
-        dpkg-deb --build package/server
-        mv package/server.deb package/confido-server-$VERSION.deb
+%description
+Confido Server
+
+%prep
+
+%build
+
+%install
+mkdir -p %{buildroot}/usr/local/bin
+install -m 0755 ./server/confido-server %{buildroot}/usr/local/bin/confido-server
+mkdir -p %{buildroot}/etc/systemd/system
+install -m 0644 ./server/deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
+
+%post
+if [ \$1 -eq 1 ] ; then
+  systemctl enable confido.service
+  systemctl daemon-reload
+  systemctl restart confido.service
+fi
+
+%files
+/usr/local/bin/confido-server
+/etc/systemd/system/confido.service
+
+%changelog
+* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
+- Initial RPM release
+
+EOF
+
+        rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-server.spec
+        mkdir -p package
+        cp rpmbuild/RPMS/x86_64/confido-server-$VERSION-1*.rpm package/confido-server-$VERSION.rpm
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-    - name: Create Debian Package for Client
+    - name: Create RPM Package for Client
       run: |
-        mkdir -p package/client/DEBIAN
         VERSION=${GITHUB_REF#refs/tags/v}
-        echo "Package: confido-client" > package/client/DEBIAN/control
-        echo "Version: $VERSION" >> package/client/DEBIAN/control
-        echo "Section: base" >> package/client/DEBIAN/control
-        echo "Priority: optional" >> package/client/DEBIAN/control
-        echo "Architecture: amd64" >> package/client/DEBIAN/control
-        echo "Maintainer: Grigorii Bezborodov <g.bezborodov@genomex.io>" >> package/client/DEBIAN/control
-        echo "Description: Confido Client" >> package/client/DEBIAN/control
-        mkdir -p package/client/usr/local/bin
-        cp ./client/confido-client package/client/usr/local/bin/confido-client
-        dpkg-deb --build package/client
-        mv package/client.deb package/confido-client-$VERSION.deb
+        mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        cat > rpmbuild/SPECS/confido-client.spec <<EOF
+Name: confido-client
+Version: $VERSION
+Release: 1%{?dist}
+Summary: Confido Client
 
-    - name: Calculate Hash of Server Binary
+License: Proprietary
+URL: https://github.com/genxnetwork/confido
+
+%description
+Confido Client
+
+%prep
+
+%build
+
+%install
+mkdir -p %{buildroot}/usr/local/bin
+install -m 0755 ./client/confido-client %{buildroot}/usr/local/bin/confido-client
+
+%files
+/usr/local/bin/confido-client
+
+%changelog
+* $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genomex.io> - $VERSION-1
+- Initial RPM release
+
+EOF
+
+        rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-client.spec
+        cp rpmbuild/RPMS/x86_64/confido-client-$VERSION-1*.rpm package/confido-client-$VERSION.rpm
+
+    - name: Calculate Hash of Server RPM
       id: calculate_hash
       run: |
-        HASH=$(sha256sum package/confido-server-${GITHUB_REF#refs/tags/v}.deb | cut -d ' ' -f 1)
+        HASH=$(sha256sum package/confido-server-${GITHUB_REF#refs/tags/v}.rpm | cut -d ' ' -f 1)
         echo "HASH=$HASH" >> $GITHUB_ENV
 
     - name: Create Release
@@ -115,8 +151,8 @@ jobs:
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-server-${{ env.VERSION }}.deb
-        asset_name: confido-server-${{ env.VERSION }}.deb
+        asset_path: package/confido-server-${{ env.VERSION }}.rpm
+        asset_name: confido-server-${{ env.VERSION }}.rpm
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -125,10 +161,8 @@ jobs:
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client-${{ env.VERSION }}.deb
-        asset_name: confido-client-${{ env.VERSION }}.deb
+        asset_path: package/confido-client-${{ env.VERSION }}.rpm
+        asset_name: confido-client-${{ env.VERSION }}.rpm
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
