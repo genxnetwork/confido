@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     name: Build and Package
-    runs-on: [self-hosted, imf-fedora39]
+    runs-on: [self-hosted, fedora39]
 
     steps:
     - name: Checkout repository
