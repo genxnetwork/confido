@@ -15,7 +15,7 @@ Confido Client
 
 %install
 mkdir -p %{buildroot}/usr/local/bin
-install -m 0755 %{buildroot}/../../../client/client/target/release/confido_client %{buildroot}/usr/local/bin/confido-client
+install -m 0755 %{buildroot}/../../../client/target/release/confido_client %{buildroot}/usr/local/bin/confido-client
 
 %files
 /usr/local/bin/confido-client
