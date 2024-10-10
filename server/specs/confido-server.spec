@@ -20,7 +20,7 @@ mkdir -p %{buildroot}/etc/systemd/system
 install -m 0644 %{buildroot}/../../../server/deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
 
 %post
-if [ \$1 -eq 1 ] ; then
+if [ "$1" -eq 1 ] ; then
   systemctl enable confido.service
   systemctl daemon-reload
   systemctl restart confido.service
