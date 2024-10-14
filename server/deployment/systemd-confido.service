@@ -7,7 +7,7 @@ Before=nginx.service
 Type=simple
 ExecStartPre=/bin/mkdir -p /etc/nginx/certs
 ExecStartPre=/bin/sh -c 'if ! mountpoint -q /etc/nginx/certs; then mount -t tmpfs -o size=8M tmpfs /etc/nginx/certs; fi'
-ExecStart=/root/confido/server/target/debug/confido_server 127.0.0.1:8080 /etc/nginx/certs sha1
+ExecStart=/usr/local/bin/confido-server 127.0.0.1:8080 /etc/nginx/certs sha1
 User=root
 Restart=on-failure
 
