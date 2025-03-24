@@ -1,3 +1,5 @@
+mod docker_utils;
+
 use std::sync::Arc;
 use std::error::Error;
 use log::{info, error, debug};
@@ -22,6 +24,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::process::Command;
 use std::path::Path;
+use docker_utils::get_running_containers;
 
 pub struct Attester;
 
@@ -152,7 +155,7 @@ impl Attester {
         Ok(ModuleLoadOrder { kernel, order })
     }
 
-    pub fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
+    pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
         let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
         // let certs = imds::get_certs()?;
@@ -165,12 +168,13 @@ impl Attester {
                 serde_json::Value::Null
             }
         };
+        let docker_containers = get_running_containers().await;
         // info!("module_order: {:?}", module_order);
-        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order))
+        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers))
     }
 }
 
-async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>, algorithms: Arc<Vec<vtpm::Algorithm>>) -> impl Responder {
+async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: web::Data<Arc<X509>>, algorithms: web::Data<Arc<Vec<vtpm::Algorithm>>>) -> impl Responder {
     info!("Received attestation request");
     let mut nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
@@ -179,8 +183,7 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X
             return HttpResponse::InternalServerError().finish();
         }
     };
-
-    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&algorithms)) {
+    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&**algorithms)).await {
         Ok(evidence) => {
             info!("Successfully gathered evidence");
             evidence
@@ -321,13 +324,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let algorithms = Arc::new(algorithms);
 
     info!("Starting server at {}", host_port);
+    
     HttpServer::new(move || {
-        let certificate = Arc::clone(&certificate);
-        let algorithms = Arc::clone(&algorithms);
-        App::new().route("/aTLS", web::post().to(move |data: web::Json<AttestationRequest>| {
-            info!("http server aTLS route called");
-            atls_http_route(data, Arc::clone(&certificate), Arc::clone(&algorithms))
-        }))
+        App::new()
+            .app_data(web::Data::new(Arc::clone(&certificate)))
+            .app_data(web::Data::new(Arc::clone(&algorithms)))
+            .route("/aTLS", web::post().to(atls_http_route))
     })
     .bind(host_port)?
     .run()

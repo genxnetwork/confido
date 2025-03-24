@@ -7,6 +7,7 @@ use log::{info, debug, error};
 use crate::nonce;
 use nonce::Nonce;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use std::fmt;
 use crate::atls::ModuleLoadOrder;
 use crate::trs::TRS;
@@ -17,6 +18,7 @@ pub struct Evidence {
     quote: vtpm::Quote,
     cgpu_attestation: serde_json::Value,
     module_load_order: ModuleLoadOrder,
+    pub docker_containers: Value,
 }
 
 impl fmt::Debug for Evidence {
@@ -31,8 +33,8 @@ impl fmt::Debug for Evidence {
 }
 
 impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder) -> Self {
-        Evidence {report, quote, cgpu_attestation, module_load_order}
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder, docker_containers: serde_json::Value) -> Self {
+        Evidence {report, quote, cgpu_attestation, module_load_order, docker_containers}
     }
 
     pub async fn verify(&self, nonce: &Nonce, host: &str) -> Result<(), Box<dyn Error>> {    
