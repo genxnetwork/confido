@@ -175,7 +175,7 @@ impl Attester {
 }
 
 async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: web::Data<Arc<X509>>, algorithms: web::Data<Arc<Vec<vtpm::Algorithm>>>) -> impl Responder {
-    info!("Received attestation request");
+    info!("http server aTLS route called - received attestation request");
     let mut nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
         Err(e) => {
