@@ -36,11 +36,22 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     };
 
     info!("Connecting to {} to gather evidence, nonce: {:?}", host, nonce.as_string());
-    let body = reqwest::Client::new()
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()?;
+
+    let body = client
         .post(format!("{}/aTLS", host))
-        .json(&serde_json::json!(request))
+        .json(&request)
         .send().await?
         .text().await?;
+
+//    info!("Connecting to {} to gather evidence, nonce: {:?}", host, nonce.as_string());
+//    let body = reqwest::Client::new()
+//        .post(format!("{}/aTLS", host))
+//        .json(&serde_json::json!(request))
+//        .send().await?
+//        .text().await?;
 
     let response: AttestationResponse = serde_json::from_str(&body).context("Failed to deserialize JSON")?;
     debug!("aTLS response: {:#?}", response.evidence);
