@@ -18,3 +18,10 @@ Ubuntu:
 cd ./client
 cargo build
 RUSTLOG=debug target/debug/confido_client 
+
+# Python library
+cd ./lib
+make wheel
+
+# Install the wheel into the active Python environment
+make install

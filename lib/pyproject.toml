@@ -13,8 +13,8 @@ description = "Your project description"
 #repository = "https://github.com/username/repo"
 #documentation = "https://docs.example.com"
 
-[package]
-metadata = { maturin = "binding_cffi" }
+[tool.maturin]
+bindings = "pyo3"
 
 [dependencies]
 cffi = "*"
