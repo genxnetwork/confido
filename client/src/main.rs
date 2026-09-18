@@ -3,16 +3,28 @@
 
 use confido::atls::ATLS;
 use tokio;
+use std::env;
 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let atls = ATLS::connect("http://127.0.0.1:8000").await.map_err(|e| {
-    // let atls = ATLS::connect("https://llm.genxt.ai").await.map_err(|e| {
+    
+    let args: Vec<String> = env::args().collect();
+    let server_url = if args.len() > 1 {
+        args[1].clone()
+    } else {
+        "http://127.0.0.1:8000".to_string()
+    };
+    
+    println!("Connecting to server: {}", server_url);
+    
+    let atls = ATLS::connect(&server_url).await.map_err(|e| {
         log::error!("Failed establish aTLS: {}", e);
         e
     })?;
+    
+    println!("✓ aTLS connection established successfully!");
 
     // let response = atls.get("https://localhost/hello").await.map_err(|e| {
     //     log::error!("Failed to request: {}", e);

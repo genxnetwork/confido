@@ -8,7 +8,7 @@ use crate::nonce;
 use nonce::Nonce;
 use serde::{Serialize, Deserialize};
 use std::fmt;
-use crate::atls::ModuleLoadOrder;
+use crate::atls::{IMALogEntry, ModuleLoadOrder};
 use crate::trs::TRS;
 
 #[derive(Serialize, Deserialize)]
@@ -17,6 +17,7 @@ pub struct Evidence {
     quote: vtpm::Quote,
     cgpu_attestation: serde_json::Value,
     module_load_order: ModuleLoadOrder,
+    pub ima_measurements: Vec<IMALogEntry>,
 }
 
 impl fmt::Debug for Evidence {
@@ -31,11 +32,16 @@ impl fmt::Debug for Evidence {
 }
 
 impl Evidence {
-    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder) -> Self {
-        Evidence {report, quote, cgpu_attestation, module_load_order}
+    pub fn new(report: Vec<u8>, quote: vtpm::Quote, cgpu_attestation: serde_json::Value, module_load_order: ModuleLoadOrder, ima_measurements: Vec<IMALogEntry>) -> Self {
+        Evidence {report, quote, cgpu_attestation, module_load_order, ima_measurements}
     }
 
-    pub async fn verify(&self, nonce: &Nonce, host: &str) -> Result<(), Box<dyn Error>> {    
+    pub fn ima_binding(measurements: &[IMALogEntry]) -> Result<Vec<u8>, serde_json::Error> {
+        let serialized = serde_json::to_vec(measurements)?;
+        Ok(ring::digest::digest(&ring::digest::SHA256, &serialized).as_ref().to_vec())
+    }
+
+    pub async fn verify(&self, nonce: &Nonce, host: &str, trs_registry: &str) -> Result<(), Box<dyn Error>> {
         let hcl_report = HclReport::new(self.report.clone())?;
         let var_data_hash = hcl_report.var_data_sha256();
         let ak_pub = hcl_report.ak_pub()?;
@@ -54,11 +60,18 @@ impl Evidence {
         }
         let der = ak_pub.key.try_to_der()?;
         let pub_key = PKey::public_key_from_der(&der)?;
-        self.quote.verify(&pub_key, nonce.as_bytes())?; // verifies signature and pcrs
+        self.quote.verify(&pub_key, nonce.as_bytes())?;
 
         // part 2
-
-        let trs = TRS::get(&host).await?;
+        let trs = TRS::get(&host, trs_registry).await?;
+        let mismatches = trs.compare_measurements(&self.ima_measurements);
+        if !mismatches.is_empty() {
+            for mismatch in &mismatches {
+                error!("IMA measurement mismatch: {}", mismatch);
+            }
+            return Err("IMA measurements do not match the trusted record".into());
+        }
+        info!("IMA measurements match the trusted record");
         let golden_aggregate_hex = trs.get_boot_aggregate_hash()?;
     
         let algo = self.get_algo().ok_or("Failed to determine evidence PCRs algorithm")?;
@@ -70,30 +83,44 @@ impl Evidence {
             return Err(format!("Boot aggregate hash mismatch").into());
         }
     
-        let (algo_name, expected_pcr10_value) = match trs.ima_calculate(&self.module_load_order) {
-            Ok(result) => result,
-            Err(e) => {
-                error!("Error calculating IMA: {}", e);
-                return Err(e.into());
-            }
-        };
-        let expected_pcr10_value_hex = hex::encode(&expected_pcr10_value);
-        debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), expected_pcr10_value_hex);
-        
-        let actual_pcr10_value_hex = match self.get_pcr(algo, 10) {
+        let actual_pcr10_value_hex = match self.get_pcr(algo.clone(), 10) {
             Ok(pcr) => hex::encode(pcr),
             Err(e) => {
                 error!("Failed to get PCR 10: {}", e);
-                String::from("PCR 10 not found")
+                return Err(e.into());
             }
         };
-        debug!("Server's PCR 10: {}: 0x{}", algo_name.to_str(), actual_pcr10_value_hex);
-    
-        if expected_pcr10_value_hex == actual_pcr10_value_hex {
-            info!("PCR 10 matches");
+
+        let expected_pcr10_value_hex = if let Some(expected) = trs.pcr10_sha256.as_deref() {
+            if algo != vtpm::Algorithm::Sha256 {
+                return Err("TRS contains SHA-256 PCR 10 but quote uses another PCR bank".into());
+            }
+            if expected.len() != 64 || !expected.chars().all(|character| character.is_ascii_hexdigit()) {
+                return Err("TRS SHA-256 PCR 10 has an invalid format".into());
+            }
+            expected.to_ascii_lowercase()
         } else {
-            return Err(format!("PCR 10 mismatch").into());
+            let (algo_name, expected_pcr10_value) = match trs.ima_calculate(&self.module_load_order, algo.clone()) {
+                Ok(result) => result,
+                Err(e) => {
+                    error!("Error calculating IMA: {}", e);
+                    return Err(e.into());
+                }
+            };
+            let expected = hex::encode(&expected_pcr10_value);
+            debug!("Expected PCR 10: {}: 0x{}", algo_name.to_str(), expected);
+            expected
+        };
+
+        debug!("Server's PCR 10: {}: 0x{}", algo.to_str(), actual_pcr10_value_hex);
+    
+        if expected_pcr10_value_hex != actual_pcr10_value_hex {
+            error!("PCR 10 mismatch");
+            error!("Expected: {}", expected_pcr10_value_hex);
+            error!("Actual:   {}", actual_pcr10_value_hex);
+            return Err("PCR 10 mismatch".into());
         }
+        info!("PCR 10 matches");
 
         info!("Evidence successfully verified");
     

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::error::Error;
 use log::{info, error, debug};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use confido::atls::{AttestationRequest, AttestationResponse, ModuleLoadOrder};
+use confido::atls::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
 use confido::nonce::Nonce;
 use confido::evidence::Evidence;
 use openssl::x509::X509;
@@ -124,39 +124,43 @@ impl Attester {
         Attester::parse_gpu_attestation_output(&output_str)
     }
 
-    fn read_module_load_order() -> Result<ModuleLoadOrder, Box<dyn Error>> {
+    fn read_ima_measurements() -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
         let path = "/sys/kernel/security/ima/ascii_runtime_measurements";
         let file = File::open(path)?;
         let reader = io::BufReader::new(file);
-    
-        let mut order = Vec::new();
-        let mut kernel = String::new();
-    
+        let mut measurements = Vec::new();
         for line in reader.lines() {
             let line = line?;
-            // if line.contains("module") {
-                // Extract module path and name from the line
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if let Some(module_path) = parts.get(4) {
-                    let parts: Vec<&str> = module_path.split('/').collect();
-                    if let Some(module_name) = parts.last() {
-                        order.push(module_name.to_string());
-                    }
-                    if kernel.is_empty() && parts.len() > 4 {
-                        kernel = parts[4].to_string();
-                    }
-                }
-            // }
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 5 { continue; }
+            let filedata: Vec<&str> = parts[3].splitn(2, ':').collect();
+            if filedata.len() != 2 { return Err("Invalid IMA measurement".into()); }
+            let filename_hint = parts[4].to_string();
+            let name = filename_hint.rsplit('/').next().unwrap_or(&filename_hint).to_string();
+            measurements.push(IMALogEntry {
+                name,
+                pcr: parts[0].parse()?,
+                template_hash: parts[1].to_string(),
+                ima_template: parts[2].to_string(),
+                filedata_alg: filedata[0].to_string(),
+                filedata_hash: filedata[1].to_string(),
+                filename_hint,
+            });
         }
-    
-        Ok(ModuleLoadOrder { kernel, order })
+        Ok(measurements)
     }
 
-    pub fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
+    pub fn gather_evidence(nonce: &Nonce, certificate: &X509, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
-        let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
-        // let certs = imds::get_certs()?;
-        let module_load_order = Attester::read_module_load_order()?;
+        let ima_measurements = Attester::read_ima_measurements()?;
+        let ima_binding = Evidence::ima_binding(&ima_measurements)?;
+        let mut quote_nonce = nonce.clone();
+        quote_nonce.extend_binding(certificate, &ima_binding);
+        let quote = vtpm::get_quote(quote_nonce.as_bytes(), algorithms.to_vec())?;
+        let module_load_order = ModuleLoadOrder {
+            kernel: ima_measurements.first().map(|measurement| measurement.filename_hint.clone()).unwrap_or_default(),
+            order: ima_measurements.iter().map(|measurement| measurement.name.clone()).collect(),
+        };
     
         let cgpu_attestation = match Attester::get_gpu_attestation() {
             Ok(cgpu_attestation) => cgpu_attestation,
@@ -166,7 +170,7 @@ impl Attester {
             }
         };
         // info!("module_order: {:?}", module_order);
-        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order))
+        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, ima_measurements))
     }
 }
 
@@ -180,7 +184,7 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X
         }
     };
 
-    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&algorithms)) {
+    let evidence = match Attester::gather_evidence(&nonce, &certificate, Arc::clone(&algorithms)) {
         Ok(evidence) => {
             info!("Successfully gathered evidence");
             evidence

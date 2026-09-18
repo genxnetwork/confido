@@ -6,6 +6,14 @@ use std::error::Error;
 use crate::evidence::Evidence;
 use anyhow::Context;
 
+pub const DEFAULT_TRS_REGISTRY: &str = "genxnetwork/confido-trusted-repository";
+
+pub fn atls_debug() {
+    let _ = env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Debug)
+        .try_init();
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct AttestationRequest {
     pub nonce: Base64, // todo change to Nonce
@@ -15,6 +23,18 @@ pub struct AttestationRequest {
 pub struct ModuleLoadOrder {
     pub kernel: String,
     pub order: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct IMALogEntry {
+    pub name: String,
+    #[serde(rename = "PCR")]
+    pub pcr: u32,
+    pub template_hash: String,
+    pub ima_template: String,
+    pub filedata_alg: String,
+    pub filedata_hash: String,
+    pub filename_hint: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -29,6 +49,10 @@ pub struct ATLS {
 }
 
 pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
+    aTLS_connect_with_registry(host, DEFAULT_TRS_REGISTRY).await
+}
+
+pub async fn aTLS_connect_with_registry(host: &str, trs_registry: &str) -> Result<X509, Box<dyn Error>> {
     info!("fn aTLS_connect: {:?}", host.to_string());
     let mut nonce: Nonce = Nonce::generate();
     let request = AttestationRequest {
@@ -57,8 +81,10 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     debug!("aTLS response: {:#?}", response.evidence);
     info!("aTLS response successfully received");
 
-    let super_nonce = nonce.extend(&X509::from_pem(&response.certificate).unwrap());
-    response.evidence.verify(super_nonce, host)
+    let certificate = X509::from_pem(&response.certificate).unwrap();
+    let ima_binding = Evidence::ima_binding(&response.evidence.ima_measurements)?;
+    let super_nonce = nonce.extend_binding(&certificate, &ima_binding);
+    response.evidence.verify(super_nonce, host, trs_registry)
         .await.map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
 
     let certificate = X509::from_pem(&response.certificate)

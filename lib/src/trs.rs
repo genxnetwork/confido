@@ -8,23 +8,10 @@ use std::env;
 use tokio::net::lookup_host;
 use reqwest::Url;
 use ring::digest::{Context, SHA1_FOR_LEGACY_USE_ONLY};
-use crate::atls::ModuleLoadOrder;
-use std::collections::HashMap;
+use crate::atls::{IMALogEntry, ModuleLoadOrder};
+use std::net::IpAddr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct IMALogEntry {
-    name: String,
-    #[serde(rename = "PCR")]
-    pcr: u32,
-    // name: String,
-    template_hash: String,
-    ima_template: String,
-    filedata_alg: String,
-    filedata_hash: String,
-    filename_hint: String,
-}
-
-#[derive(Serialize, Deserialize)]
 struct SysInfo {
     architecture: String,
     cpu_op_modes: Vec<String>,
@@ -34,35 +21,70 @@ struct SysInfo {
 
 #[derive(Serialize, Deserialize)]
 pub struct TRS {
-    ima_measurements: Vec<IMALogEntry>,
+    pub ima_measurements: Vec<IMALogEntry>,
+    #[serde(default)]
+    pub pcr10_sha256: Option<String>,
     // sys_info: SysInfo,
 }
 
 impl TRS {
-    pub async fn get(url: &str) -> Result<TRS, Box<dyn std::error::Error>> {
+    pub fn compare_measurements(&self, actual: &[IMALogEntry]) -> Vec<String> {
+        let mut mismatches = Vec::new();
+        if self.ima_measurements.len() != actual.len() {
+            mismatches.push(format!("count trusted={} actual={}", self.ima_measurements.len(), actual.len()));
+        }
+        for (index, (trusted, observed)) in self.ima_measurements.iter().zip(actual.iter()).enumerate() {
+            if trusted != observed {
+                if trusted.name != observed.name {
+                    mismatches.push(format!("index {} name trusted={} actual={}", index, trusted.name, observed.name));
+                } else {
+                    mismatches.push(format!("index {} module {} digest differs", index, trusted.name));
+                }
+            }
+        }
+        mismatches
+    }
+
+    pub async fn get(url: &str, trs_registry: &str) -> Result<TRS, Box<dyn std::error::Error>> {
         let url = Url::parse(url).unwrap();
-        let mut host = url.host_str().unwrap().to_string();
-        if host == "127.0.0.1" || host == "localhost" {
-            host = reqwest::get("https://api.ipify.org")
+        let host = url.host_str().ok_or("TRS URL has no host")?;
+        let trs_host = if host == "127.0.0.1" || host == "localhost" {
+            let public_ip = reqwest::get("https://api.ipify.org")
                 .await?
                 .text()
                 .await?;
-        }
-        info!("Fetching TRS for {}", host);
-        let home_dir = env::var("HOME")?;
-        let token_path = format!("{}/.confido/trs.token", home_dir);
-        let pat = match std::fs::read_to_string(token_path) {
-            Ok(content) => content.trim().to_string(),
-            Err(_) => return Err("Failed to read the token file. Please make sure the token file exists and is readable.".into()),
+            info!("Resolved {} through ipify to {}", host, public_ip);
+            public_ip
+        } else if host.parse::<IpAddr>().is_ok() {
+            host.to_string()
+        } else {
+            let port = url.port_or_known_default().ok_or("TRS URL has no port")?;
+            let address = lookup_host((host, port))
+                .await?
+                .next()
+                .ok_or("TRS host did not resolve")?;
+            info!("Resolved {} to {}", host, address.ip());
+            address.ip().to_string()
         };
-        let trs = "genxnetwork/confido-private";
-        let url = format!("https://api.github.com/repos/{}/contents/bb-attest-{}.json", trs, host).to_string();
+        info!("Fetching TRS for {}", trs_host);
+        
+        // Try to use GitHub token if available, otherwise skip authentication
+        let url = format!("https://api.github.com/repos/{}/contents/bb-attest-{}.json", trs_registry, trs_host).to_string();
         let client = reqwest::Client::new();
-        let data = client.get(&url)
+        
+        let request = client.get(&url)
             .header("Accept", "application/vnd.github.raw+json")
-            .header("User-Agent", "confido")
-            .bearer_auth(pat)
-            .send().await?
+            .header("User-Agent", "confido");
+        
+        // Only add auth if token file exists
+        let request = if let Ok(pat) = std::fs::read_to_string(format!("{}/.confido/trs.token", env::var("HOME").unwrap_or_else(|_| ".".to_string()))) {
+            request.bearer_auth(pat.trim())
+        } else {
+            request
+        };
+        
+        let data = request.send().await?
+            .error_for_status()?
             .text().await?;
         let trs: TRS = serde_json::from_str(&data)?;
         Ok(trs)
@@ -83,13 +105,20 @@ impl TRS {
         }
     }
 
-    fn ima_sort(&self, module_load_order: &ModuleLoadOrder) -> Vec<IMALogEntry> {
-        // Create a HashMap where the keys are the module names and the values are the measurements
-        let measurements_map: HashMap<_, _> = self.ima_measurements.iter().map(|m| (&m.name, m)).collect();
-        // Create a vector to hold the sorted measurements
+    fn ima_sort(&self, module_load_order: &ModuleLoadOrder) -> Result<Vec<IMALogEntry>, &'static str> {
+        if self.ima_measurements.len() != module_load_order.order.len() {
+            return Err("TRS measurement count does not match the server IMA order");
+        }
+
         let sorted_measurements: Vec<IMALogEntry> = module_load_order.order.iter()
-            .filter_map(|module_name| measurements_map.get(module_name).cloned().cloned())
-            .collect();
+            .zip(self.ima_measurements.iter())
+            .map(|(expected, measurement)| {
+                if expected != &measurement.name {
+                    return Err("TRS measurement order does not match the server IMA order");
+                }
+                Ok(measurement.clone())
+            })
+            .collect::<Result<_, _>>()?;
 
         for (ima_measurement, sorted_measurement) in self.ima_measurements.iter().zip(sorted_measurements.iter()) {
             let match_status = if ima_measurement.name == sorted_measurement.name {
@@ -100,21 +129,26 @@ impl TRS {
             debug!("{:<50} {:<50} {}", ima_measurement.name, sorted_measurement.name, match_status);
         }
 
-        sorted_measurements
+        Ok(sorted_measurements)
     }
 
-    fn ima_sig(&self, module_load_order: &ModuleLoadOrder) -> (vtpm::Algorithm, Vec<u8>) {
-        let mut aggregated_pcr = PCR::new(&ring::digest::SHA256, Some(vec![0; 32]));
-        let sorted_measurements = self.ima_sort(module_load_order);
+    fn ima_sig(&self, module_load_order: &ModuleLoadOrder, algo: vtpm::Algorithm) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+        let digest_algo = match algo {
+            vtpm::Algorithm::Sha256 => &ring::digest::SHA256,
+            _ => &ring::digest::SHA256, // default to SHA256
+        };
+        
+        let mut aggregated_pcr = PCR::new(digest_algo, Some(vec![0; 32]));
+        let sorted_measurements = self.ima_sort(module_load_order)?;
 
         for measurement in sorted_measurements.iter() {
             debug!("ima-sig: {}", measurement.name);
             let mut ima_data = vec![];
     
-            let algo = "sha256:";
-            let algo_len = 40;//lgo.len() as u32;
+            let algo_str = "sha256:";
+            let algo_len = 40;
             ima_data.write_u32::<LittleEndian>(algo_len).unwrap();
-            ima_data.write_all(algo.as_bytes()).unwrap();
+            ima_data.write_all(algo_str.as_bytes()).unwrap();
             let _ = ima_data.write_u8(0);
     
             let filedata_hash_bytes = hex::decode(&measurement.filedata_hash).unwrap();
@@ -136,7 +170,7 @@ impl TRS {
             
             aggregated_pcr.extend(&ima_data);
         }
-        (vtpm::Algorithm::Sha256, aggregated_pcr.value)
+        Ok((algo, aggregated_pcr.value))
     }
 
     // fn ima_ng(&self) -> (vtpm::Algorithm, Vec<u8>) {
@@ -170,34 +204,60 @@ impl TRS {
     //     (vtpm::Algorithm::Sha1, pcr.get())
     // }
 
-    fn ima_ng(&self, module_load_order: &ModuleLoadOrder) -> (vtpm::Algorithm, Vec<u8>) {
-        let mut aggregated_value = "0000000000000000000000000000000000000000".to_string(); // initial value
-        let sorted_measurements = self.ima_sort(module_load_order);
+    fn ima_ng(&self, module_load_order: &ModuleLoadOrder, algo: vtpm::Algorithm) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+        let digest_size = match algo {
+            vtpm::Algorithm::Sha1 => 20,
+            vtpm::Algorithm::Sha256 => 32,
+            _ => return Err("Unsupported PCR algorithm"),
+        };
+        let sorted_measurements = self.ima_sort(module_load_order)?;
 
-        for measurement in sorted_measurements.iter() { // self.ima_measurements.iter()
+        if sorted_measurements.iter().any(|measurement| {
+            measurement.pcr != 10
+                || hex::decode(&measurement.template_hash)
+                    .map(|digest| digest.len() != digest_size)
+                    .unwrap_or(true)
+        }) {
+            return Err("TRS template hashes do not match the selected PCR bank");
+        }
+
+        let initial_hash = match algo {
+            vtpm::Algorithm::Sha1 => "0000000000000000000000000000000000000000".to_string(),
+            vtpm::Algorithm::Sha256 => "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            _ => "0000000000000000000000000000000000000000".to_string(), // default to SHA1
+        };
+        
+        let mut aggregated_value = initial_hash;
+        for measurement in sorted_measurements.iter() {
             let hash_value = measurement.template_hash.clone();
             debug!("ima-ng: {}, hash_value: {}", measurement.name, hash_value);
     
-            // The hexadecimal string to be hashed
             let concatenated_string = aggregated_value + &hash_value;
-    
-            // Convert the hex string to bytes
             let data = hex::decode(concatenated_string).expect("Failed to decode hex string");
-    
-            // Create a new SHA-1 hash object
-            let mut context = Context::new(&SHA1_FOR_LEGACY_USE_ONLY);
-    
-            // Update the hash object with the bytes
-            context.update(&data);
-    
-            // Get the bytes of the digest
-            aggregated_value = hex::encode(context.finish().as_ref());
+
+            aggregated_value = match algo {
+                vtpm::Algorithm::Sha1 => {
+                    let mut context = Context::new(&SHA1_FOR_LEGACY_USE_ONLY);
+                    context.update(&data);
+                    hex::encode(context.finish().as_ref())
+                },
+                vtpm::Algorithm::Sha256 => {
+                    let mut context = Context::new(&ring::digest::SHA256);
+                    context.update(&data);
+                    hex::encode(context.finish().as_ref())
+                },
+                _ => {
+                    let mut context = Context::new(&SHA1_FOR_LEGACY_USE_ONLY);
+                    context.update(&data);
+                    hex::encode(context.finish().as_ref())
+                }
+            };
         }
     
-        (vtpm::Algorithm::Sha1, hex::decode(aggregated_value).expect("Failed to decode hex string"))
+        Ok((algo, hex::decode(aggregated_value).expect("Failed to decode hex string")))
     }
 
-    pub fn ima_calculate(&self, module_load_order: &ModuleLoadOrder) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
+    pub fn ima_calculate(&self, module_load_order: &ModuleLoadOrder, algo: vtpm::Algorithm) -> Result<(vtpm::Algorithm, Vec<u8>), &'static str> {
         info!("Calculating PCR10 value from IMA measurements");
         let template = match self.ima_measurements.get(0) {
             Some(first_measurement) => &first_measurement.ima_template,
@@ -213,8 +273,8 @@ impl TRS {
         // Check if all records have the same template
         if self.ima_measurements.iter().all(|measurement| measurement.ima_template == *template) {
             match template.as_str() {
-                "ima-ng" => Ok(self.ima_ng(&module_load_order)),
-                "ima-sig" => Ok(self.ima_sig(&module_load_order)),
+                "ima-ng" => self.ima_ng(&module_load_order, algo),
+                "ima-sig" => self.ima_sig(&module_load_order, algo),
                 _ => Err("No known IMA template found in records"),
             }
         } else {

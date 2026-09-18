@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use openssl::x509::X509;
 use rand::Rng;
+use ring::digest::{digest, SHA256};
 
 #[derive(Deserialize, Serialize)]
 pub struct Base64(String);
@@ -48,7 +49,24 @@ impl Nonce {
 
     pub fn extend(&mut self, certificate: &X509) -> &Nonce {
         let certificate_bytes = certificate.to_der().unwrap();
-        let _ = self.nonce.iter().chain(certificate_bytes.iter()).cloned().collect::<Vec<u8>>();
+        self.nonce = digest(&SHA256, &[self.nonce.as_slice(), certificate_bytes.as_slice()].concat())
+            .as_ref()
+            .to_vec();
+        self
+    }
+
+    pub fn extend_bytes(&mut self, bytes: &[u8]) -> &Nonce {
+        self.nonce.extend_from_slice(bytes);
+        self
+    }
+
+    pub fn extend_binding(&mut self, certificate: &X509, binding: &[u8]) -> &Nonce {
+        let certificate_bytes = certificate.to_der().unwrap();
+        let mut data = Vec::with_capacity(self.nonce.len() + certificate_bytes.len() + binding.len());
+        data.extend_from_slice(&self.nonce);
+        data.extend_from_slice(&certificate_bytes);
+        data.extend_from_slice(binding);
+        self.nonce = digest(&SHA256, &data).as_ref().to_vec();
         self
     }
 
