@@ -16,6 +16,8 @@ Cargo.lock
 **/*.pem
 evidence
 **/.venv
+__pycache__/
+*.py[cod]
 
 server/nvtrust
 **/*.log

@@ -1,12 +1,16 @@
-use crate::nonce::{Nonce, Base64}; 
-use serde::{Serialize, Deserialize};
-use log::{info, debug, error};
-use openssl::x509::X509;
-use std::error::Error;
 use crate::evidence::Evidence;
+use crate::nonce::{Base64, Nonce};
 use anyhow::Context;
+use log::{debug, info};
+use openssl::x509::X509;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::time::Duration;
 
 pub const DEFAULT_TRS_REGISTRY: &str = "genxnetwork/confido-trusted-repository";
+
+#[cfg(test)]
+mod tests;
 
 pub fn atls_debug() {
     let _ = env_logger::Builder::new()
@@ -52,43 +56,51 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     aTLS_connect_with_registry(host, DEFAULT_TRS_REGISTRY).await
 }
 
-pub async fn aTLS_connect_with_registry(host: &str, trs_registry: &str) -> Result<X509, Box<dyn Error>> {
+pub async fn aTLS_connect_with_registry(
+    host: &str,
+    trs_registry: &str,
+) -> Result<X509, Box<dyn Error>> {
     info!("fn aTLS_connect: {:?}", host.to_string());
     let mut nonce: Nonce = Nonce::generate();
     let request = AttestationRequest {
         nonce: nonce.clone().into(),
     };
 
-    info!("Connecting to {} to gather evidence, nonce: {:?}", host, nonce.as_string());
+    info!(
+        "Connecting to {} to gather evidence, nonce: {:?}",
+        host,
+        nonce.as_string()
+    );
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
     let body = client
         .post(format!("{}/aTLS", host))
         .json(&request)
-        .send().await?
-        .text().await?;
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
 
-//    info!("Connecting to {} to gather evidence, nonce: {:?}", host, nonce.as_string());
-//    let body = reqwest::Client::new()
-//        .post(format!("{}/aTLS", host))
-//        .json(&serde_json::json!(request))
-//        .send().await?
-//        .text().await?;
-
-    let response: AttestationResponse = serde_json::from_str(&body).context("Failed to deserialize JSON")?;
+    let response: AttestationResponse =
+        serde_json::from_str(&body).context("Failed to deserialize JSON")?;
     debug!("aTLS response: {:#?}", response.evidence);
     info!("aTLS response successfully received");
 
-    let certificate = X509::from_pem(&response.certificate).unwrap();
+    let certificate =
+        X509::from_pem(&response.certificate).context("Failed to parse aTLS certificate")?;
     let ima_binding = Evidence::ima_binding(&response.evidence.ima_measurements)?;
     let super_nonce = nonce.extend_binding(&certificate, &ima_binding);
-    response.evidence.verify(super_nonce, host, trs_registry)
-        .await.map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
+    response
+        .evidence
+        .verify(super_nonce, host, trs_registry)
+        .await
+        .map_err(|err| format!("Failed to verify evidence. Error: {}", err))?;
 
-    let certificate = X509::from_pem(&response.certificate)
-        .map_err(|err| format!("Failed to parse aTLS certificate. Error: {}", err))?;
     info!("aTLS certificate verification successful");
 
     Ok(certificate)
@@ -97,22 +109,28 @@ pub async fn aTLS_connect_with_registry(host: &str, trs_registry: &str) -> Resul
 impl ATLS {
     pub async fn connect(host: &str) -> Result<ATLS, Box<dyn Error>> {
         let certificate: X509 = aTLS_connect(host).await?;
-        let reqwest_cert = reqwest::Certificate::from_der(&certificate.to_der().unwrap()).unwrap();
+        Self::from_certificate(&certificate)
+    }
+
+    fn from_certificate(certificate: &X509) -> Result<ATLS, Box<dyn Error>> {
+        let reqwest_cert = reqwest::Certificate::from_der(&certificate.to_der()?)?;
         let http_client = reqwest::Client::builder()
             .use_native_tls()
+            .tls_built_in_root_certs(false)
             .add_root_certificate(reqwest_cert)
+            .https_only(true)
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(30))
             .build()?;
-        
-        Ok(ATLS {
-            http_client: http_client
-        })
+
+        Ok(ATLS { http_client })
     }
 
     async fn request(
-        &self, 
-        method: reqwest::Method, 
-        url: &str, 
-        body: Option<&str>
+        &self,
+        method: reqwest::Method,
+        url: &str,
+        body: Option<&str>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         log::debug!("Requesting URL: {}", url);
         let mut request_builder = self.http_client.request(method, url);
@@ -133,11 +151,11 @@ impl ATLS {
     pub async fn get(&self, url: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::GET, url, None).await
     }
-    
+
     pub async fn post(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::POST, url, Some(body)).await
     }
-    
+
     pub async fn put(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::PUT, url, Some(body)).await
     }
@@ -146,7 +164,11 @@ impl ATLS {
         self.request(reqwest::Method::PATCH, url, Some(body)).await
     }
 
-    pub async fn delete(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn delete(
+        &self,
+        url: &str,
+        body: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::DELETE, url, Some(body)).await
     }
 

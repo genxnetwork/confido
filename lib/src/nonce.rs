@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
 use openssl::x509::X509;
 use rand::Rng;
 use ring::digest::{digest, SHA256};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Base64(String);
@@ -20,7 +20,7 @@ impl Base64 {
     }
 }
 
-#[derive(Clone)] 
+#[derive(Clone)]
 pub struct Nonce {
     nonce: Vec<u8>,
 }
@@ -40,18 +40,19 @@ impl Nonce {
                 } else {
                     Ok(Nonce { nonce: decoded })
                 }
-            },
-            Err(_) => {
-                Err("Failed to decode nonce")
             }
+            Err(_) => Err("Failed to decode nonce"),
         }
     }
 
     pub fn extend(&mut self, certificate: &X509) -> &Nonce {
         let certificate_bytes = certificate.to_der().unwrap();
-        self.nonce = digest(&SHA256, &[self.nonce.as_slice(), certificate_bytes.as_slice()].concat())
-            .as_ref()
-            .to_vec();
+        self.nonce = digest(
+            &SHA256,
+            &[self.nonce.as_slice(), certificate_bytes.as_slice()].concat(),
+        )
+        .as_ref()
+        .to_vec();
         self
     }
 
@@ -62,7 +63,8 @@ impl Nonce {
 
     pub fn extend_binding(&mut self, certificate: &X509, binding: &[u8]) -> &Nonce {
         let certificate_bytes = certificate.to_der().unwrap();
-        let mut data = Vec::with_capacity(self.nonce.len() + certificate_bytes.len() + binding.len());
+        let mut data =
+            Vec::with_capacity(self.nonce.len() + certificate_bytes.len() + binding.len());
         data.extend_from_slice(&self.nonce);
         data.extend_from_slice(&certificate_bytes);
         data.extend_from_slice(binding);

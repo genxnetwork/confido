@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "confido"
 version = "0.0.1"
-description = "Your project description"
+description = "Attested TLS with TPM quote and IMA measurement verification"
 #authors = ["Your Name <your.email@example.com>"]
 #license = "MIT"
 #readme = "README.md"
@@ -15,6 +15,3 @@ description = "Your project description"
 
 [tool.maturin]
 bindings = "pyo3"
-
-[dependencies]
-cffi = "*"

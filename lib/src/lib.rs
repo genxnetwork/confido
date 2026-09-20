@@ -7,6 +7,7 @@ pub mod atls;
 extern crate crypto;
 mod pcr; 
 mod trs;
+mod quote;
 
 mod pylib;
 

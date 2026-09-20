@@ -34,8 +34,8 @@ ring = "0.17.8"
 rust-crypto = "0.2.36"
 byteorder = "1.4.3"
 anyhow = "1.0"
+tss-esapi = "7.7"
 
 #[features]
 #default = ["extension-module"]
 #extension-module = ["pyo3/extension-module"]
-

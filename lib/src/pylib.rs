@@ -1,25 +1,34 @@
+use crate::atls::{
+    aTLS_connect_with_registry, atls_debug as rust_atls_debug, DEFAULT_TRS_REGISTRY,
+};
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-use crate::atls::{aTLS_connect_with_registry, atls_debug as rust_atls_debug, DEFAULT_TRS_REGISTRY};
-// use openssl::x509::X509;
-use tokio::runtime::Runtime;
 use pyo3::types::PyBytes;
-
-// rust function definition:
-// pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> 
+use pyo3::wrap_pyfunction;
+use tokio::runtime::Runtime;
 
 #[pyfunction]
-fn aTLS_connect_py(host: &str, trs_registry: Option<&str>) -> PyResult<Py<PyBytes>> {
-    let rt = Runtime::new().unwrap();
-    match rt.block_on(aTLS_connect_with_registry(host, trs_registry.unwrap_or(DEFAULT_TRS_REGISTRY))) {
-        Ok(result) => {
-            pyo3::Python::with_gil(|py| {
-                let x509_bytes = result.to_der().unwrap(); // Convert X509 to byte array
-                Ok(PyBytes::new(py, &x509_bytes).into()) // Return byte array as Python bytes object
-            })
-        },
-        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to connect: {}", e))),
-    }
+#[pyo3(signature = (host, trs_registry=None))]
+fn aTLS_connect_py(
+    py: Python<'_>,
+    host: &str,
+    trs_registry: Option<&str>,
+) -> PyResult<Py<PyBytes>> {
+    let bytes = py.allow_threads(|| {
+        let rt = Runtime::new()
+            .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(err.to_string()))?;
+        let certificate = rt
+            .block_on(aTLS_connect_with_registry(
+                host,
+                trs_registry.unwrap_or(DEFAULT_TRS_REGISTRY),
+            ))
+            .map_err(|err| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to connect: {}", err))
+            })?;
+        certificate
+            .to_der()
+            .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(err.to_string()))
+    })?;
+    Ok(PyBytes::new(py, &bytes).into())
 }
 
 #[pyfunction]

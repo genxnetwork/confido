@@ -127,12 +127,23 @@ impl Attester {
     fn read_ima_measurements() -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
         let path = "/sys/kernel/security/ima/ascii_runtime_measurements";
         let file = File::open(path)?;
-        let reader = io::BufReader::new(file);
+        Self::parse_ima_measurements(io::BufReader::new(file))
+    }
+
+    fn parse_ima_measurements(reader: impl BufRead) -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
         let mut measurements = Vec::new();
         for line in reader.lines() {
             let line = line?;
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() < 5 { continue; }
+            if parts.is_empty() {
+                continue;
+            }
+            if parts.len() < 5 {
+                return Err("Incomplete IMA measurement".into());
+            }
+            if parts[2] != "ima-ng" && parts[2] != "ima-sig" {
+                return Err("Unsupported IMA template".into());
+            }
             let filedata: Vec<&str> = parts[3].splitn(2, ':').collect();
             if filedata.len() != 2 { return Err("Invalid IMA measurement".into()); }
             let filename_hint = parts[4].to_string();
@@ -147,7 +158,22 @@ impl Attester {
                 filename_hint,
             });
         }
+        if measurements.is_empty() {
+            return Err("No IMA measurements found".into());
+        }
         Ok(measurements)
+    }
+
+    fn module_load_order(measurements: &[IMALogEntry]) -> ModuleLoadOrder {
+        let kernel = measurements.iter().find_map(|measurement| {
+            let (_, module_path) = measurement.filename_hint.split_once("/modules/")?;
+            let (version, _) = module_path.split_once('/')?;
+            Some(version.to_string())
+        }).unwrap_or_default();
+        ModuleLoadOrder {
+            kernel,
+            order: measurements.iter().map(|measurement| measurement.name.clone()).collect(),
+        }
     }
 
     pub fn gather_evidence(nonce: &Nonce, certificate: &X509, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
@@ -157,10 +183,7 @@ impl Attester {
         let mut quote_nonce = nonce.clone();
         quote_nonce.extend_binding(certificate, &ima_binding);
         let quote = vtpm::get_quote(quote_nonce.as_bytes(), algorithms.to_vec())?;
-        let module_load_order = ModuleLoadOrder {
-            kernel: ima_measurements.first().map(|measurement| measurement.filename_hint.clone()).unwrap_or_default(),
-            order: ima_measurements.iter().map(|measurement| measurement.name.clone()).collect(),
-        };
+        let module_load_order = Attester::module_load_order(&ima_measurements);
     
         let cgpu_attestation = match Attester::get_gpu_attestation() {
             Ok(cgpu_attestation) => cgpu_attestation,
@@ -176,11 +199,11 @@ impl Attester {
 
 async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: Arc<X509>, algorithms: Arc<Vec<vtpm::Algorithm>>) -> impl Responder {
     info!("Received attestation request");
-    let mut nonce = match Nonce::read(&data.nonce) {
+    let nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
         Err(e) => {
             error!("{}", e);
-            return HttpResponse::InternalServerError().finish();
+            return HttpResponse::BadRequest().finish();
         }
     };
 
@@ -339,3 +362,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
