@@ -64,7 +64,7 @@ def main():
     results=[]
     started=datetime.now(timezone.utc).isoformat()
     try:
-        server=start(['sudo','-n',str(ROOT/'server/target/debug/confido-server'),'127.0.0.1:18001',str(certdir),'sha256','--tls-hostname','localhost'],'server.log')
+        server=start(['sudo','-n','sh','-c','umask 077; echo $$ > "$1"; shift; exec "$@"','confido-stage',str(stage/'server.pid'),str(ROOT/'server/target/debug/confido-server'),'127.0.0.1:18001',str(certdir),'sha256','--tls-hostname','localhost'],'server.log')
         wait_port(18001,server)
         for name,port,metrics,tls_port in [('match',18082,19091,18443),('mismatch',18083,19092,18444)]:
             config=ROOT.parent/'ga4gh_service_info_sidecar_gsoc_2026/configs'/f'{name}-demo.yaml'
@@ -170,6 +170,21 @@ http {
             subprocess.run(['sudo','-n','nginx','-s','quit','-c',str(stage/'nginx.conf'),'-p',str(stage)],check=False)
         responder.shutdown()
         responder.server_close()
+        # sudo may use a monitor/PTY. Signal the recorded workload PID, not
+        # merely the sudo wrapper; verify its identity before any signal.
+        if (stage/'server.pid').exists():
+            pid=int((stage/'server.pid').read_text())
+            def own_collector():
+                try: argv=Path(f'/proc/{pid}/cmdline').read_bytes().split(b'\0')
+                except FileNotFoundError:return False
+                return argv[0]==str(ROOT/'server/target/debug/confido-server').encode() and str(certdir).encode() in argv
+            if own_collector():
+                subprocess.run(['sudo','-n','kill','-TERM',str(pid)],check=False)
+                for _ in range(30):
+                    if not own_collector():break
+                    time.sleep(.1)
+                if own_collector():subprocess.run(['sudo','-n','kill','-KILL',str(pid)],check=True)
+
         for process in reversed(processes):
             if process.poll() is None:
                 subprocess.run(['sudo','-n','kill','-TERM',str(process.pid)],check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
