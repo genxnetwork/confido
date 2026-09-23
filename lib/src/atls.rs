@@ -14,11 +14,14 @@ mod tests;
 
 pub fn atls_debug() {
     let _ = env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Debug)
+        .target(env_logger::Target::Pipe(Box::new(crate::run_log::Sink)))
+        .filter_level(log::LevelFilter::Warn)
+        .filter_module("confido", log::LevelFilter::Debug)
         .try_init();
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct AttestationRequest {
     pub nonce: Base64, // todo change to Nonce
 }
@@ -84,10 +87,12 @@ pub struct ATLS {
     http_client: reqwest::Client,
 }
 
+#[allow(non_snake_case)] // Published compatibility name.
 pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
     aTLS_connect_with_registry(host, DEFAULT_TRS_REGISTRY).await
 }
 
+#[allow(non_snake_case)] // Published compatibility name.
 pub async fn aTLS_connect_with_registry(
     host: &str,
     trs_registry: &str,

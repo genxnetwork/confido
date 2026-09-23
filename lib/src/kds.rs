@@ -61,6 +61,17 @@ async fn get_cached<T>(
     description: &str,
     parse: impl Fn(&[u8]) -> KdsResult<T>,
 ) -> KdsResult<T> {
+    // Includes lock wait, response transfer and backoff, not only each request.
+    tokio::time::timeout(MAX_RETRY_WAIT, get_cached_inner(url, description, parse))
+        .await
+        .map_err(|_| "AMD KDS lookup exceeded 60-second total deadline")?
+}
+
+async fn get_cached_inner<T>(
+    url: &str,
+    description: &str,
+    parse: impl Fn(&[u8]) -> KdsResult<T>,
+) -> KdsResult<T> {
     // Keep the lock during a miss so concurrent attestations for the same VM
     // cannot all make the identical KDS request and trigger another 429.
     let mut cache = CACHE
@@ -104,7 +115,7 @@ async fn request_with_retry(client: &Client, url: &str, description: &str) -> Kd
     for attempt in 1..=MAX_ATTEMPTS {
         match client.get(url).send().await {
             Ok(response) if response.status().is_success() => {
-                return Ok(response.bytes().await?.to_vec())
+                return crate::appraisal::limited_body(response, 64 * 1024).await
             }
             Ok(response) => {
                 let status = response.status();

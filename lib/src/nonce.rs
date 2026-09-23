@@ -87,3 +87,33 @@ impl Into<Base64> for Nonce {
         Base64::from_base64(base64_encoded)
     }
 }
+
+#[cfg(test)]
+mod transcript_tests {
+    use super::*;
+    #[test]
+    fn wire_v1_matches_shared_serialization_vector() {
+        let v: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/fixtures/binding-v1.json")).unwrap();
+        let entries: Vec<crate::atls::IMALogEntry> =
+            serde_json::from_value(v["ima_measurements"].clone()).unwrap();
+        assert_eq!(
+            serde_json::to_string(&entries).unwrap(),
+            v["serialized_ima_utf8"].as_str().unwrap()
+        );
+        let binding = crate::evidence::Evidence::ima_binding(&entries).unwrap();
+        assert_eq!(hex::encode(&binding), v["ima_sha256"].as_str().unwrap());
+        let certificate =
+            X509::from_der(&base64::decode(v["certificate_der_base64"].as_str().unwrap()).unwrap())
+                .unwrap();
+        let mut nonce = Nonce::read(&Base64::from_base64(
+            v["nonce_base64"].as_str().unwrap().into(),
+        ))
+        .unwrap();
+        nonce.extend_binding(&certificate, &binding);
+        assert_eq!(
+            hex::encode(nonce.as_bytes()),
+            v["quote_extra_data_sha256"].as_str().unwrap()
+        );
+    }
+}

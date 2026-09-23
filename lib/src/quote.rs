@@ -20,8 +20,8 @@ pub(crate) fn verify(
         return Err("Attestation is not a TPM quote".into());
     };
     let selections = info.pcr_selection().get_selections();
-    if selections.is_empty() {
-        return Err("Quote has no PCR selection".into());
+    if selections.is_empty() || selections.len() != quote.bank_count() || selections.len() > 2 {
+        return Err("Quote has missing, unsigned extra, or unsupported PCR banks".into());
     }
     let mut seen = Vec::new();
     let mut digest = Context::new(&SHA256);

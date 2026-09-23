@@ -1,174 +1,106 @@
 # Confido
 
-Confido obtains a TLS certificate through an attestation exchange and verifies
-the AMD SEV-SNP report, TPM quote, boot aggregate, and IMA measurements against
-a trusted repository.
+Confido verifies remote execution-environment evidence and compares measured state with a verifier-approved reference. The **0.3.0** API returns a structured appraisal result and exposes an origin-scoped HTTPS client only after live appraisal and HTTPS peer authentication succeed.
+
+The implemented profile is **`azure-snp-vtpm-ima/1`**: Milan/VCEK-backed AMD SEV-SNP evidence, Azure HCL metadata, a fresh vTPM quote, signed PCR selection, boot aggregate and enrolled IMA state. It supports an intentionally incompatible reference through the same appraisal path.
+
+```mermaid
+flowchart LR
+  P[Verifier policy: root, platform, reference, origin] --> A[Local appraisal]
+  D[ServiceInfo discovery] --> C[Challenge and evidence collection]
+  C --> A
+  A -->|pass| H[HTTPS peer and metadata confirmation]
+  H -->|pass| R[Origin-scoped application client]
+  A -->|failure| W[Withhold request]
+  H -->|failure| W
+  B[Frozen bundle] --> O[Offline historical appraisal]
+```
+
+## Assurance boundary
+
+The chain is AMD ARK → ASK → VCEK → SNP report → HCL variable data → vTPM attestation key → signed quote. The quote binds a fresh nonce, the TLS certificate and an IMA-log digest. Its signed PCR selection and digest authenticate the bundled PCR values.
+
+The initial enrolled log covers a boot aggregate and kernel modules. It does not measure application code, configuration, models or GPU state. The chat example's Azure-hosted inference is outside the appraised VM. The enrolled TCB floor and launch measurement are operator decisions, not declarations that all platform vulnerabilities are remediated. Automated revocation/security-advisory checks remain a limitation.
+
+**TLS session binding is unsupported.** Certificate-bound evidence does not establish relay resistance. The fresh object is the quote; the SNP report need not be regenerated. Guest collector behavior, TLS key custody and the interval after appraisal remain assumptions. Admission is a cooperating client's point-in-time decision, not server-side capability enforcement. See the [profile decision](docs/revision/decisions/001-bounded-profile.md) and [claim/coverage matrix](docs/revision/coverage.md).
 
 ## Build
 
-Install stable Rust, Python 3, a C toolchain, OpenSSL build dependencies, and
-TPM2-TSS development headers. On Ubuntu:
+Frozen target: Linux x86_64, Rust **1.98.0**, CPython **3.10**. Cargo locks are tracked. Python is optional for Rust users; the wheel enables the `python` feature. No WASM interface is supported.
 
 ```sh
 sudo apt-get install build-essential pkg-config perl libssl-dev clang libclang-dev libtss2-dev python3-dev python3-venv
+cargo test --locked --manifest-path lib/Cargo.toml
+cargo test --locked --manifest-path server/Cargo.toml
+cargo build --locked --manifest-path server/Cargo.toml
+cargo build --locked --manifest-path client/Cargo.toml
 ```
 
-The Rust manifests fetch `az-snp-vtpm` from the original
-[Kinvolk azure-cvm-tooling repository](https://github.com/kinvolk/azure-cvm-tooling)
-at the pinned `v0.6.0` revision
-`9c6bff6c959994da280f8b3b5bad62a1600063d0`. Confido keeps its SHA-1 and
-multi-bank TPM quote support in `lib/src/vtpm.rs`. No sibling checkout is needed:
+`az-snp-vtpm` is pinned to the original [Kinvolk/Microsoft repository](https://github.com/kinvolk/azure-cvm-tooling) at `9c6bff6c959994da280f8b3b5bad62a1600063d0`. Multi-bank support is retained with attribution in `lib/src/vtpm.rs`. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
-```sh
-cargo build --manifest-path server/Cargo.toml
-cargo build --manifest-path client/Cargo.toml
-```
-
-## Server and client
-
-Run the server on an Azure SEV-SNP VM with access to its vTPM and IMA log:
-
-```sh
-sudo env RUST_LOG=info server/target/debug/confido_server 127.0.0.1:8001 /tmp/confido sha256
-# Expose GET /service-info and POST /tee-report on HTTPS port 443.
-RUST_LOG=info client/target/debug/confido_client https://your-hostname
-```
-
-`server/run.sh [host:port] [certificate-directory] [PCR-bank] [TLS-hostname]`
-builds and starts the private report server. Its default address is
-`127.0.0.1:8001`. Nginx proxies public `POST /tee-report` to private Confido
-`POST http://127.0.0.1:8001/tee-report`. The Go service-info process
-advertises this path in `GET /service-info`; clients send a fresh base64 nonce
-in a JSON request body over HTTPS port 443. For a
-public HTTPS endpoint, pass its DNS name as the fourth argument, for example:
-
-```sh
-server/run.sh 127.0.0.1:8001 /tmp/confido sha256 match.demo.genxt.network
-```
-
-New certificates include that name in a subject alternative name. If a key and
-certificate already exist, the server checks that they match and that the
-certificate covers the requested name; provision a replacement pair if it does
-not. The certificate must also be served by the HTTPS application. The server
-creates private keys with owner-only permissions, restricts an existing key to
-owner-only access, and rejects incomplete or mismatched certificate/key pairs. Rust `ATLS` requests retain hostname
-verification, trust only the attested certificate as their trust anchor,
-require HTTPS, and do not follow redirects. Certificates must cover the
-application hostname.
-
-## Python wheel
-
-From the repository root, create and activate a virtual environment:
+### Python wheel
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install 'maturin>=1.6,<2' patchelf
+python -m pip install 'maturin==1.15.0' 'patchelf==0.17.2.4'
 make -C lib install PYTHON=python
+python -m unittest discover -s lib/tests -v
 ```
 
-`make install` builds the wheel and installs it into the active environment. Use
-`make -C lib wheel PYTHON=python` to build without installing. `MATURIN`, `CARGO`,
-`PYTHON`, and `MATURIN_FLAGS` can be overridden; the default flags require a
-PyPI-compatible wheel. The wheel is written to `lib/target/wheels/`. The
-`confido-atls` distribution installs the `confido` module. The example
-repository pins version 0.2.0 for its end-user Docker image.
+This builds the local wheel; it requires no publication. The sibling `confidential-ai-example` builds its container from that exact wheel and hashed Python requirements.
+
+## API and replay
 
 ```python
+import json
 import confido
 
-# Optional; both debug aliases are supported and safe to call repeatedly.
-confido.atls_debug()
-certificate_der = confido.aTLS_connect_py("https://attestation-host")
-# Alternatively, select an explicit trusted repository:
-certificate_der = confido.aTLS_connect_py(
-    "https://attestation-host", trs_registry="owner/trusted-repository"
-)
+policy = open("profiles/match.json").read()  # operator-reviewed, never from discovery
+preview = confido.discover_py(policy)       # public bootstrap metadata only
+print(preview)
+# Obtain application-level consent before collecting evidence.
+session = confido.connect_py(policy, preview, "/private/new-run.json")
+result = json.loads(session.result_json)
+if result["application_admitted"]:
+    status, headers, body = session.request("GET", result["origin"] + "/service-info", [], b"")
 ```
 
-The function returns DER certificate bytes only after verification succeeds and
-raises `RuntimeError` on failure. It releases the Python GIL during verification.
-Callers must bind their subsequent HTTPS connection to this attested identity;
-adding the returned certificate to a general system trust store is insufficient.
+The session has no public constructor. It owns a private HTTPS client, keeps normal hostname validation, trusts only the appraised leaf certificate, and rejects redirects, HTTP downgrade, caller-supplied authority headers and another origin. The Python chat client wraps it as an HTTPX transport.
 
-## Trusted records and compatibility
-
-The default repository is `genxnetwork/confido-trusted-repository`. Records are
-fetched as `bb-attest-<IP>.json`, resolving DNS names to an IP address. For
-`localhost` or `127.0.0.1`, the public IP is obtained from ipify. If a hostname has
-multiple addresses, the selected address must have the corresponding trusted
-record. An optional GitHub token is read from `~/.confido/trs.token`; public
-repositories can be used without one.
-
-Each trusted record contains `ima_measurements`. The client requires an exact
-match, including order, duplicates, count, filenames, and digest metadata.
-Supported templates are `ima-ng` and `ima-sig`; measurements must target PCR 10.
-The boot aggregate's `filedata_alg` selects SHA-1 or SHA-256, and that bank must
-be present in the signed quote.
-
-PCR 10 is either replayed from trusted template hashes of the selected bank's
-digest length, or compared with an explicitly enrolled `pcr10_sha256` value
-(64 hexadecimal characters). A SHA-1 template digest cannot be replayed into
-the SHA-256 bank. In that case, enroll the expected SHA-256 PCR 10 from a trusted
-machine. IMA signatures are covered by their template digest; the verifier does
-not reconstruct an `ima-sig` entry with an assumed empty signature.
-
-This update changes the evidence format and quote challenge. The challenge is
-`SHA256(nonce || certificate_DER || SHA256(serialized_IMA_measurements))`.
-Upgrade the server and all clients together. Old clients or old evidence that
-omits `ima_measurements` are incompatible; there is no fallback to unbound data.
-The accepted quote layout is a contiguous PCR selection starting at PCR 0 and
-including PCR 10, with bank labels and digest lengths checked against the signed
-selection. The server currently quotes PCRs 0–23.
-
-GPU evidence is collected when available, but this verifier does not validate
-GPU evidence. The upstream dependency verifies the SNP report signature and
-requires its reported TCB to equal its committed TCB; additional SNP guest-policy
-and minimum TCB acceptance rules are outside this change. The current HCL
-parser's panic-prone metadata access is contained at the input boundary under
-Rust's default unwind panic strategy.
-
-## Publish the Python wheel to PyPI
-
-The `Publish Python wheel to PyPI` workflow runs when a `pypi-v<version>` tag is
-pushed. It checks that the tag, `lib/pyproject.toml`, and `lib/Cargo.toml` have the
-same version, builds and tests a Linux CPython 3.10 wheel, then uploads it with
-a PyPI API token. The existing `v*` tags remain reserved for RPM releases.
-
-In the GitHub repository, open **Settings → Environments → pypi** (create the
-`pypi` environment if needed). Under **Environment secrets**, add a secret named
-`PYPI_API_TOKEN` containing the complete PyPI token, including its `pypi-`
-prefix. Prefer a token scoped to the `confido-atls` project. If environment
-secrets are unavailable for the repository's GitHub plan, add the same name
-under **Settings → Secrets and variables → Actions → Repository secrets**.
-The workflow reads either location through `secrets.PYPI_API_TOKEN`; do not
-commit the token to this repository. The GitHub `pypi` environment is a place
-for secrets and deployment rules; it does not configure PyPI Trusted
-Publishing. Restrict deployments to `master` and `pypi-v*` tags, and configure
-required reviewers if available.
-
-Once the workflow is on the default branch, use its **Run workflow** button on
-`master` to check that GitHub received the secret and PyPI accepts the token.
-The manual check sends no package and cannot create a release. It does not
-confirm the token's permission to upload to `confido-atls`. Before approving
-the publish job, run the live release check described below against both the
-enrolled and mismatching endpoints. After the release commit is on `master`,
-create and push a `pypi-v<version>` tag pointing to that commit to start the
-publish workflow.
-
-## Validation
+`appraisal::AppraisalConfig`, `EvidenceBundle`, `AppraisalResult`, `connect` and `appraise` provide the equivalent Rust API. Statuses distinguish `invalid_evidence`, `policy_mismatch`, `unsupported_profile` and `dependency_unavailable`. The result carries stages/reasons, fingerprints, challenge, reference identity, coverage, bindings, timings and limitations. Result schema version is 1. The result is not a signed assertion for third parties.
 
 ```sh
-cargo test --manifest-path lib/Cargo.toml
-cargo test --manifest-path server/Cargo.toml
-cargo build --manifest-path client/Cargo.toml
-python -m unittest discover -s lib/tests -p 'test_*.py' -v
-git diff --check
+client/target/debug/confido_client appraise profiles/match.json /private/new-run.json
+client/target/debug/confido_client replay profiles/match.json /private/new-run.json EVALUATION_UNIX_TIME
 ```
 
-Run the Python tests after installing the new wheel into the active environment.
-Rust TLS tests and Python tests use localhost sockets. Other regression tests
-use synthetic signed TPM quotes and independent PCR vectors; they do not
-substitute for a live Azure SEV-SNP attestation check. A live release check must
-accept the enrolled endpoint and reject the mismatching endpoint before any
-application request.
+Replay evaluates a frozen bundle at an independently chosen time. It never authorizes a fresh request. Bundles contain public endorsements and potentially sensitive host measurements; keep them private and inspect before sharing. Python runs save a `.result.json` and full `.attestation.log` alongside the bundle, with mode 0600. No application credentials or prompts are stored.
+
+### Compatibility
+
+`aTLS_connect`, `aTLS_connect_with_registry`, `aTLS_connect_py` and `ATLS` remain **legacy compatibility APIs**. They use mutable DNS/IP-based reference selection and the earlier checks. They do not implement the complete 0.3.0 policy or scoped-admission API; do not use them for new integrations. Existing binding transcript v1 is preserved; a domain-separated successor requires a new version and shared vectors.
+
+## Public contract and deployment
+
+- `GET /service-info`: GA4GH metadata plus a custom `teeReport` advertisement.
+- `POST /tee-report`: JSON `nonce`, standard base64 of exactly 32 bytes. Response: `profile`, `wireVersion: 1`, `evidence`, PEM `certificate` bytes; `Cache-Control: no-store`.
+- `/v1/...`: application traffic after client admission.
+
+All public routes use HTTPS 443. HTTP 80 redirects with 308; `/aTLS` remains 404. The new client requires the versioned advertisement and fails closed on older sidecars. The TEE resource path is a Confido convention, not a GA4GH-standard TEE endpoint.
+
+The collector has one concurrent TPM operation, three bounded snapshot attempts and a 20-second response deadline. A timed-out blocking TPM operation retains its permit until it finishes. KDS lookups have bounded body size, three attempts and a 60-second total deadline, including cache-lock wait. No GPU collection runs on the required path.
+
+Use the aligned [deployment templates](server/deployment/README.md), [preflight](scripts/preflight.py), [isolated acceptance harness](scripts/stage_demo.py) and [rerun checklist](docs/revision/rerun.md). Public services are promoted separately after reviewing the staged results.
+
+## Revision artifacts
+
+- [Baseline/deployment manifest](docs/revision/checkpoint.json)
+- [Implementation brief](docs/revision/prompt.md) and [review](docs/revision/review.md)
+- [API/reference decision](docs/revision/decisions/002-api-and-references.md)
+- [Wire/deployment decision](docs/revision/decisions/003-contract-and-build.md)
+- [Technical walkthrough](docs/revision/walkthrough.md) and [roadmap](docs/revision/roadmap.md)
+
+## Licence status
+
+Confido's repository licence and the existing proprietary RPM labels require an owner decision before an open release. This revision neither assigns a new licence nor claims a published open release. Upstream licences and notices remain applicable; see `THIRD_PARTY_NOTICES.md`.

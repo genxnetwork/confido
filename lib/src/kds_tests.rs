@@ -74,3 +74,28 @@ fn parses_retry_after_seconds_and_http_dates() {
     assert!(retry_after(&headers).unwrap() <= Duration::from_secs(30));
     assert!(retry_after(&headers).unwrap() >= Duration::from_secs(28));
 }
+
+#[tokio::test]
+async fn rejects_oversized_kds_response_without_retry() {
+    let (url, server) = serve(vec![
+        "HTTP/1.1 200 OK\r\nContent-Length: 65537\r\nConnection: close\r\n\r\n",
+    ])
+    .await;
+    assert!(request_with_retry(&Client::new(), &url, "test")
+        .await
+        .unwrap_err()
+        .to_string()
+        .contains("size limit"));
+    assert_eq!(server.await.unwrap(), 1);
+}
+
+#[tokio::test]
+async fn rejects_retry_after_beyond_total_deadline() {
+    let (url,server)=serve(vec!["HTTP/1.1 429 Too Many Requests\r\nRetry-After: 61\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"]).await;
+    assert!(request_with_retry(&Client::new(), &url, "test")
+        .await
+        .unwrap_err()
+        .to_string()
+        .contains("60-second"));
+    assert_eq!(server.await.unwrap(), 1);
+}

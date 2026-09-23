@@ -129,6 +129,10 @@ impl fmt::Debug for Quote {
 }
 
 impl Quote {
+    pub(crate) fn bank_count(&self) -> usize {
+        self.pcr_banks.len()
+    }
+
     pub fn get_pcr_bank(&self, algo: Algorithm) -> Option<&PcrBank> {
         self.pcr_banks.iter().find(|bank| bank.algo == algo)
     }

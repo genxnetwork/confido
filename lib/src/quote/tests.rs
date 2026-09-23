@@ -94,6 +94,9 @@ fn quote_accepts_original_binding_and_rejects_changed_challenge_certificate_or_l
     assert_ne!(nonce.as_bytes(), challenge.as_bytes());
     let quote = signed_quote(&nonce, &key);
     verify(&quote, &public_key, nonce.as_bytes()).unwrap();
+    let unrelated = PKey::from_rsa(Rsa::generate(2048).unwrap()).unwrap();
+    let unrelated = PKey::public_key_from_der(&unrelated.public_key_to_der().unwrap()).unwrap();
+    assert!(verify(&quote, &unrelated, nonce.as_bytes()).is_err());
 
     let different_challenge = Nonce::read(&Base64::from_base64(base64::encode([8; 32]))).unwrap();
     let different_certificate = certificate(&key, "substituted");
@@ -156,6 +159,15 @@ fn rejects_unsigned_bank_labels_lengths_and_shifted_pcr_selection() {
     let regrouped: Quote = serde_json::from_value(regrouped).unwrap();
     assert!(regrouped.verify(&public_key, nonce.as_bytes()).is_ok());
     assert!(verify(&regrouped, &public_key, nonce.as_bytes()).is_err());
+
+    let mut extra = serde_json::to_value(&quote).unwrap();
+    extra["pcr_banks"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({"algo":"Sha1","pcr_values":[]}));
+    let extra: Quote = serde_json::from_value(extra).unwrap();
+    assert!(extra.verify(&public_key, nonce.as_bytes()).is_ok());
+    assert!(verify(&extra, &public_key, nonce.as_bytes()).is_err());
 
     let shifted = signed_quote_with_selection(&nonce, &key, [0xfe, 0x0f, 0]);
     assert!(shifted.verify(&public_key, nonce.as_bytes()).is_ok());

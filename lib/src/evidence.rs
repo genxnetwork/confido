@@ -14,7 +14,7 @@ use std::fmt;
 #[derive(Serialize, Deserialize)]
 pub struct Evidence {
     pub report: Vec<u8>,
-    quote: vtpm::Quote,
+    pub(crate) quote: vtpm::Quote,
     cgpu_attestation: serde_json::Value,
     module_load_order: ModuleLoadOrder,
     pub ima_measurements: Vec<IMALogEntry>,
@@ -85,9 +85,29 @@ impl Evidence {
         Ok(())
     }
 
-    fn parse_report(
+    /// Collector consistency check; this does not validate AMD endorsements.
+    pub fn verify_quote_snapshot(
+        &self,
+        nonce: &Nonce,
+        certificate: &openssl::x509::X509,
+    ) -> Result<(), Box<dyn Error>> {
+        let (_, _, ak) = self.parse_report()?;
+        let mut bound = nonce.clone();
+        bound.extend_binding(certificate, &Self::ima_binding(&self.ima_measurements)?);
+        crate::quote::verify(&self.quote, &ak, bound.as_bytes())
+    }
+
+    pub(crate) fn parse_report(
         &self,
     ) -> Result<(AttestationReport, [u8; 32], PKey<openssl::pkey::Public>), Box<dyn Error>> {
+        if self.report.len() < 1236 || self.report.len() > 64 * 1024 {
+            return Err("Invalid HCL report size".into());
+        }
+        let hash_type = u32::from_le_bytes(self.report[1228..1232].try_into()?);
+        let variable_size = u32::from_le_bytes(self.report[1232..1236].try_into()?) as usize;
+        if hash_type != 1 || variable_size > self.report.len() - 1236 {
+            return Err("Invalid HCL hash type or variable data size".into());
+        }
         // The current HCL dependency uses unchecked slices and panics for
         // unsupported hash types. Contain those failures at the network input
         // boundary until its parsing accessors return checked Results.
@@ -103,7 +123,7 @@ impl Evidence {
         .map_err(|_| "Invalid HCL report metadata")?
     }
 
-    fn verify_measurements(&self, trs: &TRS) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn verify_measurements(&self, trs: &TRS) -> Result<(), Box<dyn Error>> {
         let mismatches = trs.compare_measurements(&self.ima_measurements);
         if !mismatches.is_empty() {
             for mismatch in &mismatches {
