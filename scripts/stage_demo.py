@@ -46,6 +46,8 @@ def main():
             if sock.connect_ex(('127.0.0.1',port))==0: raise RuntimeError(f'Port {port} already in use')
     policies=stage/'profiles'; policies.mkdir()
     certdir=stage/'certs';certdir.mkdir()
+    # Pre-create as the invoking user so sudo preserves readable ownership.
+    (stage/'server.pid').touch(mode=0o600)
     captures=[]
     class Responder(BaseHTTPRequestHandler):
         def do_POST(self):

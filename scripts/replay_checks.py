@@ -59,6 +59,11 @@ def main():
     run("changed_pcr", lambda b,c: b["report"]["evidence"]["quote"]["pcr_banks"][0]["pcr_values"][10].__setitem__(0, b["report"]["evidence"]["quote"]["pcr_banks"][0]["pcr_values"][10][0]^1), "quote_binding_invalid")
     run("changed_ima", lambda b,c: b["report"]["evidence"]["ima_measurements"][0].update(filedata_hash="0"*64), "quote_binding_invalid")
     run("oversized_reference", lambda b,c: b.update(reference_json=" "*(4*1024*1024+1)), "input_too_large")
+    for label, at in [("endorsement_not_yet_valid",0),("endorsement_expired",7258118400)]:
+        r=json.loads(confido.appraise_offline_py(json.dumps(bundle),json.dumps(config),at))
+        assert r["reason"]=="endorsement_chain_invalid",(label,r)
+        assert not r["application_admitted"]
+        records.append({"id":label,"expected":"endorsement_chain_invalid","observed":r["reason"]})
     times=[]
     for _ in range(args.samples):
         r=json.loads(confido.appraise_offline_py(json.dumps(bundle),json.dumps(config),args.at))
