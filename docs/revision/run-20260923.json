@@ -110,6 +110,11 @@
     "chat-tests.log": {
       "passed": 5,
       "sha256": "468b31af735e289556a89b369299d8a7d36b727c2fb67e798116b80ffc0ca2fa"
+    },
+    "go-tests.jsonl": {
+      "passed_test_events": 39,
+      "passed_packages": 4,
+      "sha256": "9acb3008a2b84d1cd86b0aadb3bf71b26aca479ff61c7da8abb5fe3193864ecf"
     }
   },
   "replay_cases": 21,
