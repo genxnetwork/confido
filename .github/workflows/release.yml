@@ -63,13 +63,13 @@ jobs:
     - name: Build Server Package
       run: |
         cd server
-        cargo build --release
-        cp target/release/confido_server ./confido-server
+        cargo build --locked --release
+        cp target/release/confido-server ./confido-server
 
     - name: Build Client Package
       run: |
         cd client
-        cargo build --release
+        cargo build --locked --release
         cp target/release/confido_client ./confido-client
 
     - name: Create RPM Package for Server

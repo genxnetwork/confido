@@ -79,3 +79,42 @@ fn generated_certificate_has_requested_subject_alternative_name() {
         assert!(certificate.public_key().unwrap().public_eq(&private_key));
     }
 }
+
+#[actix_web::test]
+async fn rejects_invalid_nonce_oversize_and_busy_before_tpm_access() {
+    let (certificate, _) = generate_certificate("localhost").unwrap();
+    let certificate = Arc::new(certificate);
+    let algorithms = Arc::new(vec![vtpm::Algorithm::Sha256]);
+    // Zero slots simulates an occupied collector without calling real TPM APIs.
+    let collector = Arc::new(Semaphore::new(0));
+    let app = actix_web::test::init_service(
+        App::new()
+            .wrap(actix_web::middleware::DefaultHeaders::new().add(("Cache-Control", "no-store")))
+            .app_data(web::JsonConfig::default().limit(1024))
+            .route(
+                "/tee-report",
+                web::post().to(move |data: web::Json<AttestationRequest>| {
+                    atls_http_route(
+                        data,
+                        Arc::clone(&certificate),
+                        Arc::clone(&algorithms),
+                        Arc::clone(&collector),
+                    )
+                }),
+            ),
+    )
+    .await;
+    for (nonce, expected) in [
+        ("bad!".to_string(), 400),
+        (base64::encode([0; 32]), 503),
+        ("x".repeat(2048), 413),
+    ] {
+        let request = actix_web::test::TestRequest::post()
+            .uri("/tee-report")
+            .set_json(serde_json::json!({"nonce":nonce}))
+            .to_request();
+        let response = actix_web::test::call_service(&app, request).await;
+        assert_eq!(response.status().as_u16(), expected);
+        assert_eq!(response.headers().get("cache-control").unwrap(), "no-store");
+    }
+}

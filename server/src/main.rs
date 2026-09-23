@@ -13,150 +13,43 @@ use openssl::rsa::Rsa;
 use openssl::x509::extension::SubjectAlternativeName;
 use openssl::x509::X509NameBuilder;
 use openssl::x509::X509;
-use regex::Regex;
-use serde_json::Value;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, Read, Write};
 use std::net::IpAddr;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::Semaphore;
 
 pub struct Attester;
 
 impl Attester {
-    fn parse_gpu_attestation_output(output: &str) -> Result<Value, Box<dyn Error>> {
-        let mut result = serde_json::json!({
-            "Number of GPUs available": 0,
-            "GPUs": [],
-            "raw_gpu_report": output,
-        });
-
-        let re_number_of_gpus = Regex::new(r"Number of GPUs available : (\d+)").unwrap();
-        let re_verifying_gpu = Regex::new(r"VERIFYING GPU : (\d+)").unwrap();
-        let re_state = Regex::new(r"GPU is in expected state").unwrap();
-        let re_verification = Regex::new(r"GPU (\d+) verified successfully").unwrap();
-        let re_attestation = Regex::new(r"GPU Attested Successfully").unwrap();
-        let re_driver_version = Regex::new(r"Driver version fetched : (\d+\.\d+\.\d+)").unwrap();
-        let re_vbios_version = Regex::new(r"VBIOS version fetched : (\d+\.\d+\.\d+\.\d+)").unwrap();
-        let re_attestation_report_signature_verification =
-            Regex::new(r"Attestation report signature verification successful").unwrap();
-        let re_attestation_report_verification =
-            Regex::new(r"Attestation report verification successful").unwrap();
-
-        let mut gpu_info = HashMap::new();
-        let lines: Vec<&str> = output.lines().collect();
-        let mut current_gpu: Option<serde_json::Value> = None;
-
-        for line in lines {
-            if let Some(caps) = re_number_of_gpus.captures(line) {
-                result["Number of GPUs available"] = caps[1].parse::<i64>().unwrap().into();
-            } else if let Some(caps) = re_verifying_gpu.captures(line) {
-                if let Some(gpu) = current_gpu.take() {
-                    result["GPUs"].as_array_mut().unwrap().push(gpu);
-                }
-                let gpu_num = caps[1].parse::<i64>().unwrap();
-                current_gpu = Some(serde_json::json!({
-                    "GPU": gpu_num,
-                    "Driver version fetched": "",
-                    "VBIOS version fetched": "",
-                    "Attestation report signature verification": "",
-                    "Attestation report verification": "",
-                    "attestation": "",
-                    "state": "",
-                    "verification": "",
-                }));
-                gpu_info.insert(
-                    gpu_num,
-                    serde_json::json!({
-                        "state": "",
-                        "verification": "",
-                        "attestation": "",
-                    }),
-                );
-            } else if re_state.is_match(line) {
-                let gpu_num = current_gpu.as_ref().unwrap()["GPU"].as_i64().unwrap();
-                gpu_info.get_mut(&gpu_num).unwrap()["state"] = "GPU is in expected state.".into();
-            } else if let Some(caps) = re_verification.captures(line) {
-                let gpu_num = caps[1].parse::<i64>().unwrap();
-                gpu_info.get_mut(&gpu_num).unwrap()["verification"] =
-                    format!("GPU {} verified successfully.", gpu_num).into();
-            } else if re_attestation.is_match(line) {
-                let gpu_num = current_gpu.as_ref().unwrap()["GPU"].as_i64().unwrap();
-                gpu_info.get_mut(&gpu_num).unwrap()["attestation"] =
-                    "GPU Attested Successfully.".into();
-            } else if let Some(caps) = re_driver_version.captures(line) {
-                current_gpu.as_mut().unwrap()["Driver version fetched"] =
-                    caps[1].to_string().into();
-            } else if let Some(caps) = re_vbios_version.captures(line) {
-                current_gpu.as_mut().unwrap()["VBIOS version fetched"] = caps[1].to_string().into();
-            } else if re_attestation_report_signature_verification.is_match(line) {
-                current_gpu.as_mut().unwrap()["Attestation report signature verification"] =
-                    "successful".into();
-            } else if re_attestation_report_verification.is_match(line) {
-                current_gpu.as_mut().unwrap()["Attestation report verification"] =
-                    "successful".into();
-            }
-        }
-
-        if let Some(gpu) = current_gpu.take() {
-            result["GPUs"].as_array_mut().unwrap().push(gpu);
-        }
-
-        for (gpu_num, info) in gpu_info {
-            let idx = result["GPUs"]
-                .as_array_mut()
-                .unwrap()
-                .iter()
-                .position(|g| g["GPU"] == gpu_num)
-                .unwrap();
-            result["GPUs"][idx]["state"] = info["state"].clone();
-            result["GPUs"][idx]["verification"] = info["verification"].clone();
-            result["GPUs"][idx]["attestation"] = info["attestation"].clone();
-        }
-
-        Ok(result)
-    }
-
-    fn get_gpu_attestation() -> Result<Value, Box<dyn Error>> {
-        let cgpu_verifier = "verifier.cc_admin";
-        if !Path::new(cgpu_verifier).exists() {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "cgpu_verifier python module not found",
-            )));
-        }
-
-        let output = Command::new("python3")
-            .arg("-m")
-            .arg("verifier.cc_admin")
-            .output()
-            .expect("Failed to execute GPU attestation command");
-
-        if !output.status.success() {
-            return Err(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                "Failed to execute GPU attestation command",
-            )));
-        }
-
-        let output_str = String::from_utf8(output.stdout)?;
-        Attester::parse_gpu_attestation_output(&output_str)
-    }
-
     fn read_ima_measurements() -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
         let path = "/sys/kernel/security/ima/ascii_runtime_measurements";
         let file = File::open(path)?;
         Self::parse_ima_measurements(io::BufReader::new(file))
     }
 
-    fn parse_ima_measurements(reader: impl BufRead) -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
+    fn parse_ima_measurements(
+        mut reader: impl BufRead,
+    ) -> Result<Vec<IMALogEntry>, Box<dyn Error>> {
         let mut measurements = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
+        let mut total_bytes = 0;
+        loop {
+            let mut line = String::new();
+            let read = (&mut reader).take(8193).read_line(&mut line)?;
+            if read == 0 {
+                break;
+            }
+            total_bytes += read;
+            if measurements.len() >= 16384 || total_bytes > 2 * 1024 * 1024 {
+                return Err("IMA log exceeds profile size limit".into());
+            }
+            if line.len() > 8192 {
+                return Err("IMA entry exceeds size limit".into());
+            }
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.is_empty() {
                 continue;
@@ -216,29 +109,35 @@ impl Attester {
         certificate: &X509,
         algorithms: Arc<Vec<vtpm::Algorithm>>,
     ) -> Result<Evidence, Box<dyn Error>> {
-        let report = vtpm::get_report()?;
-        let ima_measurements = Attester::read_ima_measurements()?;
-        let ima_binding = Evidence::ima_binding(&ima_measurements)?;
-        let mut quote_nonce = nonce.clone();
-        quote_nonce.extend_binding(certificate, &ima_binding);
-        let quote = vtpm::get_quote(quote_nonce.as_bytes(), algorithms.to_vec())?;
-        let module_load_order = Attester::module_load_order(&ima_measurements);
-
-        let cgpu_attestation = match Attester::get_gpu_attestation() {
-            Ok(cgpu_attestation) => cgpu_attestation,
-            Err(e) => {
-                error!("Failed to get GPU attestation: {}", e);
-                serde_json::Value::Null
+        let mut last_error = String::from("unstable evidence snapshot");
+        for _ in 0..3 {
+            let attempt = (|| -> Result<Evidence, Box<dyn Error>> {
+                let report = vtpm::get_report()?;
+                let measurements = Self::read_ima_measurements()?;
+                let binding = Evidence::ima_binding(&measurements)?;
+                let mut quote_nonce = nonce.clone();
+                quote_nonce.extend_binding(certificate, &binding);
+                let quote = vtpm::get_quote(quote_nonce.as_bytes(), algorithms.to_vec())?;
+                let order = Self::module_load_order(&measurements);
+                let evidence =
+                    Evidence::new(report, quote, serde_json::Value::Null, order, measurements);
+                // TPM quote and PCR read are separate commands. Verify their
+                // signed digest and selection before returning a snapshot.
+                evidence.verify_quote_snapshot(nonce, certificate)?;
+                if evidence.ima_measurements != Self::read_ima_measurements()? {
+                    return Err("IMA changed during quote collection".into());
+                }
+                Ok(evidence)
+            })();
+            match attempt {
+                Ok(evidence) => return Ok(evidence),
+                Err(e) => {
+                    last_error = e.to_string();
+                    log::warn!("Retrying inconsistent evidence snapshot: {last_error}");
+                }
             }
-        };
-        // info!("module_order: {:?}", module_order);
-        Ok(Evidence::new(
-            report,
-            quote,
-            cgpu_attestation,
-            module_load_order,
-            ima_measurements,
-        ))
+        }
+        Err(format!("Snapshot unavailable after 3 attempts: {last_error}").into())
     }
 }
 
@@ -246,36 +145,48 @@ async fn atls_http_route(
     data: web::Json<AttestationRequest>,
     certificate: Arc<X509>,
     algorithms: Arc<Vec<vtpm::Algorithm>>,
+    collector: Arc<Semaphore>,
 ) -> impl Responder {
-    info!("Received attestation request");
     let nonce = match Nonce::read(&data.nonce) {
         Ok(nonce) => nonce,
-        Err(e) => {
-            error!("{}", e);
-            return HttpResponse::BadRequest().finish();
+        Err(e) => return HttpResponse::BadRequest().body(e),
+    };
+    // Fail immediately when busy. A timed-out blocking task retains its permit
+    // until the TPM call actually finishes; it cannot spawn unbounded workers.
+    let permit = match collector.try_acquire_owned() {
+        Ok(permit) => permit,
+        Err(_) => return HttpResponse::ServiceUnavailable().body("Evidence collector busy"),
+    };
+    let cert = Arc::clone(&certificate);
+    let task = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        Attester::gather_evidence(&nonce, &cert, algorithms).map_err(|e| e.to_string())
+    });
+    let evidence = match tokio::time::timeout(Duration::from_secs(20), task).await {
+        Ok(Ok(Ok(evidence))) => evidence,
+        other => {
+            error!(
+                "Evidence collection failed or exceeded its deadline: {:?}",
+                other.err()
+            );
+            return HttpResponse::ServiceUnavailable()
+                .body("Consistent evidence snapshot unavailable");
         }
     };
-
-    let evidence = match Attester::gather_evidence(&nonce, &certificate, Arc::clone(&algorithms)) {
-        Ok(evidence) => {
-            info!("Successfully gathered evidence");
-            evidence
-        }
-        Err(e) => {
-            error!("Failed to gather evidence: {}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-
-    debug!("{:#?}", evidence);
     let response = AttestationResponse {
-        evidence: evidence,
-        certificate: certificate.to_pem().unwrap().to_vec(),
+        evidence,
+        certificate: match certificate.to_pem() {
+            Ok(pem) => pem,
+            Err(_) => return HttpResponse::InternalServerError().finish(),
+        },
     };
-
-    HttpResponse::Ok()
-        .insert_header(("Cache-Control", "no-store"))
-        .json(response)
+    let mut response = match serde_json::to_value(response) {
+        Ok(value) => value,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+    response["profile"] = serde_json::json!(confido::appraisal::PROFILE);
+    response["wireVersion"] = serde_json::json!(confido::appraisal::WIRE_VERSION);
+    HttpResponse::Ok().json(response)
 }
 
 fn write_private_key(path: &Path, private_key: &PKey<Private>) -> Result<(), Box<dyn Error>> {
@@ -310,56 +221,20 @@ fn generate_certificate(
     hostname: &str,
 ) -> Result<(X509, PKey<Private>), openssl::error::ErrorStack> {
     // Generate a new 2048-bit RSA private key
-    let rsa = Rsa::generate(2048).unwrap();
-    let private_key = PKey::from_rsa(rsa).unwrap();
+    let rsa = Rsa::generate(2048)?;
+    let private_key = PKey::from_rsa(rsa)?;
 
     // Build the certificate name
-    let mut name_builder = X509NameBuilder::new().unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::COMMONNAME, hostname)
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::ORGANIZATIONNAME, "GENXT LTD")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::ORGANIZATIONALUNITNAME, "IT")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::COUNTRYNAME, "GB")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::STATEORPROVINCENAME, "Cambridgeshire")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::LOCALITYNAME, "Hinxton")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::PKCS9_EMAILADDRESS, "info@genxt.ai")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(
-            Nid::POSTALADDRESS,
-            "AB318, Biodata Innovation Centre, Wellcome Genome Campus",
-        )
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::POSTALCODE, "CB101DR")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::BUSINESSCATEGORY, "Private Ogranisation")
-        .unwrap();
-    name_builder
-        .append_entry_by_nid(Nid::DOMAINCOMPONENT, "genxt.ai")
-        .unwrap();
-
+    let mut name_builder = X509NameBuilder::new()?;
+    name_builder.append_entry_by_nid(Nid::COMMONNAME, hostname)?;
     let name = name_builder.build();
 
     // Build the certificate
-    let mut builder = X509::builder().unwrap();
-    builder.set_version(2).unwrap();
-    builder.set_subject_name(&name).unwrap();
-    builder.set_issuer_name(&name).unwrap();
-    builder.set_pubkey(&private_key).unwrap();
+    let mut builder = X509::builder()?;
+    builder.set_version(2)?;
+    builder.set_subject_name(&name)?;
+    builder.set_issuer_name(&name)?;
+    builder.set_pubkey(&private_key)?;
     let mut san = SubjectAlternativeName::new();
     if hostname.parse::<IpAddr>().is_ok() {
         san.ip(hostname);
@@ -370,15 +245,15 @@ fn generate_certificate(
     builder.append_extension(extension)?;
 
     // Set the not_before and not_after dates for the certificate
-    let not_before = Asn1Time::days_from_now(0).unwrap();
-    let not_after = Asn1Time::days_from_now(365).unwrap();
-    builder.set_not_before(&not_before).unwrap();
-    builder.set_not_after(&not_after).unwrap();
+    let not_before = Asn1Time::days_from_now(0)?;
+    let not_after = Asn1Time::days_from_now(365)?;
+    builder.set_not_before(&not_before)?;
+    builder.set_not_after(&not_after)?;
 
-    builder.sign(&private_key, MessageDigest::sha256()).unwrap();
+    builder.sign(&private_key, MessageDigest::sha256())?;
     let certificate = builder.build();
-    let certificate_pem = certificate.to_pem().unwrap();
-    let certificate_pem_str = String::from_utf8(certificate_pem).unwrap();
+    let certificate_pem = certificate.to_pem()?;
+    let certificate_pem_str = String::from_utf8_lossy(&certificate_pem);
     debug!("{}", certificate_pem_str);
 
     Ok((certificate, private_key))
@@ -498,18 +373,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let algorithms = Arc::new(algorithms);
+    let collector = Arc::new(Semaphore::new(1));
 
     info!("Starting server at {}", host_port);
     HttpServer::new(move || {
         let certificate = Arc::clone(&certificate);
         let algorithms = Arc::clone(&algorithms);
-        App::new().route(
-            "/tee-report",
-            web::post().to(move |data: web::Json<AttestationRequest>| {
-                info!("http server report route called");
-                atls_http_route(data, Arc::clone(&certificate), Arc::clone(&algorithms))
-            }),
-        )
+        let collector = Arc::clone(&collector);
+        App::new()
+            .wrap(actix_web::middleware::DefaultHeaders::new().add(("Cache-Control", "no-store")))
+            .app_data(web::JsonConfig::default().limit(1024))
+            .route(
+                "/tee-report",
+                web::post().to(move |data: web::Json<AttestationRequest>| {
+                    info!("http server report route called");
+                    atls_http_route(
+                        data,
+                        Arc::clone(&certificate),
+                        Arc::clone(&algorithms),
+                        Arc::clone(&collector),
+                    )
+                }),
+            )
     })
     .bind(host_port)?
     .run()
