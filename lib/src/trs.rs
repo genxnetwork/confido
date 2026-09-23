@@ -1,6 +1,6 @@
 use crate::atls::{IMALogEntry, ModuleLoadOrder};
 use crate::pcr::Pcr;
-use az_snp_vtpm::vtpm;
+use crate::vtpm;
 use log::{debug, error, info};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};

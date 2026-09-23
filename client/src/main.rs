@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_url = if args.len() > 1 {
         args[1].clone()
     } else {
-        "http://127.0.0.1:8000".to_string()
+        "https://localhost".to_string()
     };
 
     println!("Connecting to server: {}", server_url);

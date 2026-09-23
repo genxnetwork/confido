@@ -16,11 +16,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: confido
-      - uses: actions/checkout@v4
-        with:
-          repository: genxnetwork/azure-cvm-tooling
-          ref: 64c4ef852132642c0da6a6c8918c51dfafa87ddb
-          path: azure-cvm-tooling
       - name: Install build dependencies
         run: |
           sudo apt-get update

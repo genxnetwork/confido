@@ -1,9 +1,9 @@
 use crate::atls::{IMALogEntry, ModuleLoadOrder};
 use crate::nonce;
 use crate::trs::TRS;
+use crate::vtpm;
 use az_snp_vtpm::hcl::HclReport;
 use az_snp_vtpm::report::{AttestationReport, Validateable};
-use az_snp_vtpm::{amd_kds, vtpm};
 use log::{debug, error, info};
 use nonce::Nonce;
 use openssl::pkey::PKey;
@@ -67,8 +67,8 @@ impl Evidence {
     ) -> Result<(), Box<dyn Error>> {
         let (snp_report, var_data_hash, pub_key) = self.parse_report()?;
 
-        let cert_chain = amd_kds::get_cert_chain()?;
-        let vcek = amd_kds::get_vcek(&snp_report)?;
+        let cert_chain = crate::kds::get_cert_chain().await?;
+        let vcek = crate::kds::get_vcek(&snp_report).await?;
 
         cert_chain.validate()?;
         vcek.validate(&cert_chain)?;

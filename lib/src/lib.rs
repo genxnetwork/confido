@@ -1,13 +1,14 @@
 // use pyo3::pyclass;
 // use wasm_bindgen::prelude::*;
-pub mod evidence;
-pub mod nonce;
 pub mod atls;
+pub mod evidence;
+mod kds;
+pub mod nonce;
 
 extern crate crypto;
-mod pcr; 
-mod trs;
+mod pcr;
 mod quote;
+mod trs;
 
 mod pylib;
 
@@ -21,3 +22,5 @@ mod pylib;
 //     m.add_class::<ATLS>()?;
 //     Ok(())
 // }
+
+pub mod vtpm;

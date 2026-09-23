@@ -1,4 +1,4 @@
-use az_snp_vtpm::vtpm::{Algorithm, Quote};
+use crate::vtpm::{Algorithm, Quote};
 use openssl::pkey::{PKey, Public};
 use ring::digest::{Context, SHA256};
 use std::error::Error;
@@ -7,8 +7,8 @@ use tss_esapi::structures::{Attest, AttestInfo};
 use tss_esapi::traits::UnMarshall;
 
 /// Verify both the quote and the mapping of its bundled PCR values to the
-/// signed selection. The dependency checks the concatenated PCR bytes, but
-/// does not authenticate the bundled bank labels, lengths, or PCR positions.
+/// signed selection. Quote::verify checks the concatenated PCR digest; this
+/// function also authenticates the bundled bank labels, lengths, and positions.
 pub(crate) fn verify(
     quote: &Quote,
     key: &PKey<Public>,

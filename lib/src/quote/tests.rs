@@ -2,7 +2,7 @@ use super::verify;
 use crate::atls::IMALogEntry;
 use crate::evidence::Evidence;
 use crate::nonce::{Base64, Nonce};
-use az_snp_vtpm::vtpm::Quote;
+use crate::vtpm::Quote;
 use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private, Public};

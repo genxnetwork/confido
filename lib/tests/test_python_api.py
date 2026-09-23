@@ -5,14 +5,35 @@ import json
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlsplit
 
 import confido
 
 
 class AttestationHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if urlsplit(self.path).path != "/service-info":
+            self.send_error(404)
+            return
+        advertisement = {
+            "teeReport": {
+                "endpoint": self.server.advertisement_endpoint, "method": "POST",
+                "nonce": {"name": "nonce", "in": "body", "encoding": "base64", "sizeBytes": 32},
+                "response": {"evidenceField": "evidence", "certificateField": "certificate"},
+            }
+        }
+        body = json.dumps(advertisement).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
-        request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        self.server.nonces.append(request["nonce"])
+        if urlsplit(self.path).path != "/tee-report":
+            self.send_error(404)
+            return
+        body = self.rfile.read(int(self.headers["Content-Length"]))
+        self.server.nonces.append(json.loads(body)["nonce"])
         self.send_response(self.server.response_status)
         self.end_headers()
         self.wfile.write(self.server.response_body)
@@ -39,6 +60,7 @@ class PythonApiTests(unittest.TestCase):
     def setUp(self):
         self.server.response_status = 200
         self.server.response_body = b"{}"
+        self.server.advertisement_endpoint = "/tee-report"
 
     def test_registry_is_optional_and_accepts_positional_and_keyword_arguments(self):
         signature = inspect.signature(confido.aTLS_connect_py)
@@ -52,6 +74,13 @@ class PythonApiTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Failed to deserialize JSON"):
                 call()
         self.assertEqual(len(set(self.server.nonces[-3:])), 3)
+
+    def test_rejects_untrusted_report_endpoint_before_posting_nonce(self):
+        before = len(self.server.nonces)
+        self.server.advertisement_endpoint = "https://example.invalid/steal"
+        with self.assertRaisesRegex(RuntimeError, "Unsupported service-info TEE report advertisement"):
+            confido.aTLS_connect_py(self.url)
+        self.assertEqual(len(self.server.nonces), before)
 
     def test_http_error_is_reported_before_deserialization(self):
         self.server.response_status = 503

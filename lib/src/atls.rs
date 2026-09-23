@@ -47,6 +47,38 @@ pub struct AttestationResponse {
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
 }
 
+#[derive(Deserialize)]
+struct ServiceInfoDiscovery {
+    #[serde(rename = "teeReport")]
+    tee_report: TEEReportAdvertisement,
+}
+
+#[derive(Deserialize)]
+struct TEEReportAdvertisement {
+    endpoint: String,
+    method: String,
+    nonce: TEEReportNonce,
+    response: TEEReportResponse,
+}
+
+#[derive(Deserialize)]
+struct TEEReportNonce {
+    name: String,
+    #[serde(rename = "in")]
+    location: String,
+    encoding: String,
+    #[serde(rename = "sizeBytes")]
+    size_bytes: usize,
+}
+
+#[derive(Deserialize)]
+struct TEEReportResponse {
+    #[serde(rename = "evidenceField")]
+    evidence_field: String,
+    #[serde(rename = "certificateField")]
+    certificate_field: String,
+}
+
 pub struct ATLS {
     // certificate: X509, read once from server and initilised into http client
     http_client: reqwest::Client,
@@ -77,8 +109,34 @@ pub async fn aTLS_connect_with_registry(
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
+    let service_info_url =
+        reqwest::Url::parse(&format!("{}/service-info", host.trim_end_matches('/')))?;
+    let discovery: ServiceInfoDiscovery = client
+        .get(service_info_url.clone())
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await
+        .context("Failed to parse service-info TEE report advertisement")?;
+    let ad = discovery.tee_report;
+    if ad.endpoint != "/tee-report"
+        || ad.method != "POST"
+        || ad.nonce.name != "nonce"
+        || ad.nonce.location != "body"
+        || ad.nonce.encoding != "base64"
+        || ad.nonce.size_bytes != 32
+        || ad.response.evidence_field != "evidence"
+        || ad.response.certificate_field != "certificate"
+    {
+        return Err("Unsupported service-info TEE report advertisement".into());
+    }
+    let report_url = service_info_url.join(&ad.endpoint)?;
+    if report_url.origin() != service_info_url.origin() {
+        return Err("TEE report endpoint must share the service-info origin".into());
+    }
     let body = client
-        .post(format!("{}/aTLS", host))
+        .post(report_url)
         .json(&request)
         .send()
         .await?

@@ -1,6 +1,6 @@
 [package]
 name = "confido"
-version = "0.0.1"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -11,7 +11,8 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-az-snp-vtpm = { path = "../../azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm", features = ["verifier"] }
+# az-snp-vtpm = { path = "../../azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm", features = ["verifier"] }  # local fork, retained for reference
+az-snp-vtpm = { git = "https://github.com/kinvolk/azure-cvm-tooling", rev = "9c6bff6c959994da280f8b3b5bad62a1600063d0", features = ["verifier"] }
 openssl = { version = "0.10", features = ["vendored"] }
 serde = "1.0"
 serde_json = "1.0"
@@ -21,6 +22,7 @@ env_logger = "0.8"
 log = "0.4"
 #reqwest = { version = "0.12.4", features = ["json", "native-tls", "blocking"] }
 reqwest = { version = "0.11", features = ["json", "native-tls"] }
+httpdate = "1"
 pyo3 = { version = "0.20.0", features = ["extension-module"] }
 pyo3-asyncio = { version = "0.20.0", features = ["tokio"] }
 tokio = { version = "1", features = ["full"] }

@@ -11,7 +11,10 @@ fn reads_ima_order_and_digest_metadata() {
     assert_eq!(entries[1].template_hash, "123");
     assert_eq!(entries[1].filedata_alg, "sha256");
     assert_eq!(entries[1].filedata_hash, "456");
-    assert_eq!(entries[1].filename_hint, "/lib/modules/6.8.0/kernel/example.ko");
+    assert_eq!(
+        entries[1].filename_hint,
+        "/lib/modules/6.8.0/kernel/example.ko"
+    );
     let order = Attester::module_load_order(&entries);
     assert_eq!(order.kernel, "6.8.0");
     assert_eq!(order.order, ["boot_aggregate", "example.ko"]);
@@ -42,4 +45,37 @@ fn reads_ima_sig_without_reconstructing_or_dropping_its_template_hash() {
     .unwrap();
     assert_eq!(entries[0].ima_template, "ima-sig");
     assert_eq!(entries[0].template_hash, "abc");
+}
+
+#[test]
+fn creates_private_keys_with_owner_only_permissions() {
+    let rsa = Rsa::generate(2048).unwrap();
+    let key = PKey::from_rsa(rsa).unwrap();
+    let path = std::env::temp_dir().join(format!(
+        "confido-key-test-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    write_private_key(&path, &key).unwrap();
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(write_private_key(&path, &key).is_err());
+    let saved = PKey::private_key_from_pem(&fs::read(&path).unwrap()).unwrap();
+    assert!(saved.public_eq(&key));
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn generated_certificate_has_requested_subject_alternative_name() {
+    for hostname in ["match.demo.genxt.network", "127.0.0.1"] {
+        let (certificate, private_key) = generate_certificate(hostname).unwrap();
+        assert!(certificate_covers_host(&certificate, hostname));
+        assert!(!certificate_covers_host(&certificate, "other.example"));
+        assert!(certificate.public_key().unwrap().public_eq(&private_key));
+    }
 }

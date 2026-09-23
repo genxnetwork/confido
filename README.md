@@ -13,14 +13,13 @@ TPM2-TSS development headers. On Ubuntu:
 sudo apt-get install build-essential pkg-config perl libssl-dev clang libclang-dev libtss2-dev python3-dev python3-venv
 ```
 
-The Rust manifests expect the
-[GENXT azure-cvm-tooling fork](https://github.com/genxnetwork/azure-cvm-tooling)
-in a sibling directory. The tested revision is
-`64c4ef852132642c0da6a6c8918c51dfafa87ddb`:
+The Rust manifests fetch `az-snp-vtpm` from the original
+[Kinvolk azure-cvm-tooling repository](https://github.com/kinvolk/azure-cvm-tooling)
+at the pinned `v0.6.0` revision
+`9c6bff6c959994da280f8b3b5bad62a1600063d0`. Confido keeps its SHA-1 and
+multi-bank TPM quote support in `lib/src/vtpm.rs`. No sibling checkout is needed:
 
 ```sh
-git clone https://github.com/genxnetwork/azure-cvm-tooling ../azure-cvm-tooling
-git -C ../azure-cvm-tooling checkout 64c4ef852132642c0da6a6c8918c51dfafa87ddb
 cargo build --manifest-path server/Cargo.toml
 cargo build --manifest-path client/Cargo.toml
 ```
@@ -30,15 +29,32 @@ cargo build --manifest-path client/Cargo.toml
 Run the server on an Azure SEV-SNP VM with access to its vTPM and IMA log:
 
 ```sh
-sudo env RUST_LOG=info server/target/debug/confido_server 127.0.0.1:8000 /tmp/confido sha256
-RUST_LOG=info client/target/debug/confido_client http://127.0.0.1:8000
+sudo env RUST_LOG=info server/target/debug/confido_server 127.0.0.1:8001 /tmp/confido sha256
+# Expose GET /service-info and POST /tee-report on HTTPS port 443.
+RUST_LOG=info client/target/debug/confido_client https://your-hostname
 ```
 
-`server/run.sh [host:port] [certificate-directory] [PCR-bank]` builds and starts
-the server, using the same defaults. The certificate must also be served by the
-HTTPS application. Rust `ATLS` requests retain hostname verification, trust only
-the attested certificate as their trust anchor, require HTTPS, and do not follow
-redirects. Certificates must cover the application hostname.
+`server/run.sh [host:port] [certificate-directory] [PCR-bank] [TLS-hostname]`
+builds and starts the private report server. Its default address is
+`127.0.0.1:8001`. Nginx proxies public `POST /tee-report` to private Confido
+`POST http://127.0.0.1:8001/tee-report`. The Go service-info process
+advertises this path in `GET /service-info`; clients send a fresh base64 nonce
+in a JSON request body over HTTPS port 443. For a
+public HTTPS endpoint, pass its DNS name as the fourth argument, for example:
+
+```sh
+server/run.sh 127.0.0.1:8001 /tmp/confido sha256 match.demo.genxt.network
+```
+
+New certificates include that name in a subject alternative name. If a key and
+certificate already exist, the server checks that they match and that the
+certificate covers the requested name; provision a replacement pair if it does
+not. The certificate must also be served by the HTTPS application. The server
+creates private keys with owner-only permissions, restricts an existing key to
+owner-only access, and rejects incomplete or mismatched certificate/key pairs. Rust `ATLS` requests retain hostname
+verification, trust only the attested certificate as their trust anchor,
+require HTTPS, and do not follow redirects. Certificates must cover the
+application hostname.
 
 ## Python wheel
 
@@ -48,24 +64,25 @@ From the repository root, create and activate a virtual environment:
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install 'maturin>=1.6,<2' patchelf
-make -C lib wheel PYTHON=python
 make -C lib install PYTHON=python
 ```
 
-`MATURIN`, `PYTHON`, and `MATURIN_FLAGS` can be overridden. The wheel is written
-to `lib/target/wheels/`; it installs the `confido` module. This local distribution
-is distinct from the example repository's existing `confido-atls` PyPI pin.
-Install the built wheel explicitly when testing these changes.
+`make install` builds the wheel and installs it into the active environment. Use
+`make -C lib wheel PYTHON=python` to build without installing. `MATURIN`, `CARGO`,
+`PYTHON`, and `MATURIN_FLAGS` can be overridden; the default flags require a
+PyPI-compatible wheel. The wheel is written to `lib/target/wheels/`. The
+`confido-atls` distribution installs the `confido` module. The example
+repository pins version 0.2.0 for its end-user Docker image.
 
 ```python
 import confido
 
 # Optional; both debug aliases are supported and safe to call repeatedly.
 confido.atls_debug()
-certificate_der = confido.aTLS_connect_py("http://attestation-host:8000")
+certificate_der = confido.aTLS_connect_py("https://attestation-host")
 # Alternatively, select an explicit trusted repository:
 certificate_der = confido.aTLS_connect_py(
-    "http://attestation-host:8000", trs_registry="owner/trusted-repository"
+    "https://attestation-host", trs_registry="owner/trusted-repository"
 )
 ```
 
@@ -105,10 +122,39 @@ including PCR 10, with bank labels and digest lengths checked against the signed
 selection. The server currently quotes PCRs 0–23.
 
 GPU evidence is collected when available, but this verifier does not validate
-GPU evidence. The dependency verifies the SNP report signature; additional SNP
-guest-policy and TCB acceptance rules are outside this change. The current HCL
+GPU evidence. The upstream dependency verifies the SNP report signature and
+requires its reported TCB to equal its committed TCB; additional SNP guest-policy
+and minimum TCB acceptance rules are outside this change. The current HCL
 parser's panic-prone metadata access is contained at the input boundary under
 Rust's default unwind panic strategy.
+
+## Publish the Python wheel to PyPI
+
+The `Publish Python wheel to PyPI` workflow runs when a `pypi-v<version>` tag is
+pushed. It checks that the tag, `lib/pyproject.toml`, and `lib/Cargo.toml` have the
+same version, builds and tests a Linux CPython 3.10 wheel, then uploads it with
+a PyPI API token. The existing `v*` tags remain reserved for RPM releases.
+
+In the GitHub repository, open **Settings → Environments → pypi** (create the
+`pypi` environment if needed). Under **Environment secrets**, add a secret named
+`PYPI_API_TOKEN` containing the complete PyPI token, including its `pypi-`
+prefix. Prefer a token scoped to the `confido-atls` project. If environment
+secrets are unavailable for the repository's GitHub plan, add the same name
+under **Settings → Secrets and variables → Actions → Repository secrets**.
+The workflow reads either location through `secrets.PYPI_API_TOKEN`; do not
+commit the token to this repository. The GitHub `pypi` environment is a place
+for secrets and deployment rules; it does not configure PyPI Trusted
+Publishing. Restrict deployments to `master` and `pypi-v*` tags, and configure
+required reviewers if available.
+
+Once the workflow is on the default branch, use its **Run workflow** button on
+`master` to check that GitHub received the secret and PyPI accepts the token.
+The manual check sends no package and cannot create a release. It does not
+confirm the token's permission to upload to `confido-atls`. Before approving
+the publish job, run the live release check described below against both the
+enrolled and mismatching endpoints. After the release commit is on `master`,
+create and push a `pypi-v<version>` tag pointing to that commit to start the
+publish workflow.
 
 ## Validation
 
