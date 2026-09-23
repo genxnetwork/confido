@@ -18,3 +18,6 @@ __pycache__/
 
 server/nvtrust
 **/*.log
+
+# Private, generated demonstration evidence and frozen runtime archives
+.artifacts/

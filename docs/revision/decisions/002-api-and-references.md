@@ -7,3 +7,7 @@ Collection and pure appraisal are separate. Frozen bundles contain evidence, pub
 Results carry ordered checks, stable reason codes and distinct invalid-evidence, policy-mismatch, unsupported-profile and dependency-unavailable statuses. They also carry fingerprints, reference identity, coverage, bindings, timings and limitations. The result is not a signed remote attestation result.
 
 Confido 0.3.0 adds this API. Existing `aTLS_connect*` entry points remain documented **legacy mutable-reference compatibility APIs**, with their original narrower checks; they do not imply conformance to the new profile. The demo and revised CLI use the new API exclusively. Rust no longer requires Python or experimental WASM dependencies; the wheel enables the `python` feature. Linux x86_64 / CPython 3.10 is the frozen demonstration target.
+
+## Digest definitions
+
+`reference.sha256` covers the exact fetched UTF-8 reference bytes, including whitespace. `evidence_sha256` covers compact `serde_json` serialization of the complete report JSON value (object keys ordered lexicographically), rather than the HTTP transfer's whitespace. Certificate and AMD ARK fingerprints cover complete X.509 DER; the vTPM key fingerprint covers DER SubjectPublicKeyInfo. The quote's IMA digest uses the fixed Rust struct field order, independently checked against `lib/tests/fixtures/binding-v1.json`. These are distinct serializations and must not be interchanged.
