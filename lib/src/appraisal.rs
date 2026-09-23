@@ -12,12 +12,19 @@ use az_snp_vtpm::{
     report::Validateable,
 };
 use log::{debug, error, info};
-use openssl::x509::X509;
+use openssl::{asn1::Asn1Time, x509::X509};
 use reqwest::{Client, Url};
+use rustls::{
+    client::{ServerCertVerified, ServerCertVerifier},
+    Certificate, ClientConfig, Error as TlsError, RootCertStore, ServerName,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
+    cmp::Ordering,
     error::Error,
+    net::IpAddr,
+    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -27,6 +34,85 @@ pub const WIRE_VERSION: u32 = 1;
 pub const MAX_BODY: usize = 4 * 1024 * 1024;
 pub const MAX_METADATA: usize = 64 * 1024;
 pub const MAX_BUNDLE: usize = 16 * 1024 * 1024;
+
+/// Every TLS connection must present the exact certificate bound into the
+/// appraised quote. This works for both public-CA and self-signed leaf certs;
+/// rustls still verifies the server's TLS handshake signature.
+struct AttestedCertificateVerifier {
+    expected_der: Vec<u8>,
+    expected_host: String,
+}
+
+impl ServerCertVerifier for AttestedCertificateVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &Certificate,
+        _intermediates: &[Certificate],
+        server_name: &ServerName,
+        _scts: &mut dyn Iterator<Item = &[u8]>,
+        _ocsp_response: &[u8],
+        now: SystemTime,
+    ) -> Result<ServerCertVerified, TlsError> {
+        let fail = || {
+            TlsError::General(
+                "TLS certificate does not match appraised evidence or hostname".into(),
+            )
+        };
+        if end_entity.0 != self.expected_der {
+            return Err(fail());
+        }
+        let x509 = X509::from_der(&end_entity.0).map_err(|_| fail())?;
+        let now_unix = now
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| fail())?
+            .as_secs();
+        let now_asn1 =
+            Asn1Time::from_unix(now_unix.try_into().map_err(|_| fail())?).map_err(|_| fail())?;
+        if x509.not_before().compare(&now_asn1).map_err(|_| fail())? == Ordering::Greater
+            || x509.not_after().compare(&now_asn1).map_err(|_| fail())? == Ordering::Less
+        {
+            return Err(fail());
+        }
+        let names = x509.subject_alt_names().ok_or_else(fail)?;
+        let host_matches = match server_name {
+            ServerName::DnsName(host)
+                if host.as_ref().eq_ignore_ascii_case(&self.expected_host) =>
+            {
+                names.iter().any(|name| {
+                    name.dnsname()
+                        .is_some_and(|dns| dns.eq_ignore_ascii_case(host.as_ref()))
+                })
+            }
+            ServerName::IpAddress(ip) if ip.to_string() == self.expected_host => {
+                names.iter().any(|name| {
+                    name.ipaddress().is_some_and(|addr| match ip {
+                        IpAddr::V4(v4) => addr == v4.octets(),
+                        IpAddr::V6(v6) => addr == v6.octets(),
+                    })
+                })
+            }
+            _ => false,
+        };
+        if !host_matches {
+            return Err(fail());
+        }
+        Ok(ServerCertVerified::assertion())
+    }
+}
+
+fn appraised_tls_config(der: Vec<u8>, hostname: String) -> ClientConfig {
+    let mut config = ClientConfig::builder()
+        .with_safe_defaults()
+        .with_root_certificates(RootCertStore::empty())
+        .with_no_client_auth();
+    config
+        .dangerous()
+        .set_certificate_verifier(Arc::new(AttestedCertificateVerifier {
+            expected_der: der,
+            expected_host: hostname,
+        }));
+    config
+}
 
 pub fn sha256(bytes: &[u8]) -> String {
     hex::encode(openssl::sha::sha256(bytes))
@@ -847,11 +933,16 @@ pub async fn connect(config: &AppraisalConfig, preview: Value) -> ConnectionOutc
     let started = Instant::now();
     let authenticate = async {
         let response: AttestationResponse = serde_json::from_value(bundle.report.clone())?;
-        let certificate = reqwest::Certificate::from_pem(&response.certificate)?;
+        let certificate = X509::from_pem(&response.certificate)?;
+        let tls = appraised_tls_config(
+            certificate.to_der()?,
+            origin
+                .host_str()
+                .ok_or("Missing HTTPS hostname")?
+                .to_string(),
+        );
         let client = Client::builder()
-            .use_native_tls()
-            .tls_built_in_root_certs(false)
-            .add_root_certificate(certificate)
+            .use_preconfigured_tls(tls)
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(30))
@@ -964,6 +1055,85 @@ mod tests {
         a = b;
         a["teeReport"].as_object_mut().unwrap().remove("profile");
         assert!(validate_discovery(&a, &c).is_err());
+    }
+    #[test]
+    fn pinned_tls_leaf_requires_exact_certificate_host_and_validity() {
+        use openssl::{
+            hash::MessageDigest,
+            pkey::PKey,
+            rsa::Rsa,
+            x509::{extension::SubjectAlternativeName, X509NameBuilder},
+        };
+        let key = PKey::from_rsa(Rsa::generate(2048).unwrap()).unwrap();
+        let mut name = X509NameBuilder::new().unwrap();
+        name.append_entry_by_text("CN", "match.demo.genxt.network")
+            .unwrap();
+        let name = name.build();
+        let mut builder = X509::builder().unwrap();
+        builder.set_version(2).unwrap();
+        builder.set_subject_name(&name).unwrap();
+        builder.set_issuer_name(&name).unwrap();
+        builder.set_pubkey(&key).unwrap();
+        builder
+            .set_not_before(&Asn1Time::days_from_now(0).unwrap())
+            .unwrap();
+        builder
+            .set_not_after(&Asn1Time::days_from_now(1).unwrap())
+            .unwrap();
+        let san = SubjectAlternativeName::new()
+            .dns("match.demo.genxt.network")
+            .build(&builder.x509v3_context(None, None))
+            .unwrap();
+        builder.append_extension(san).unwrap();
+        builder.sign(&key, MessageDigest::sha256()).unwrap();
+        let der = builder.build().to_der().unwrap();
+        let verifier = AttestedCertificateVerifier {
+            expected_der: der.clone(),
+            expected_host: "match.demo.genxt.network".into(),
+        };
+        let name = ServerName::try_from("match.demo.genxt.network").unwrap();
+        let mut scts = std::iter::empty();
+        assert!(verifier
+            .verify_server_cert(
+                &Certificate(der.clone()),
+                &[],
+                &name,
+                &mut scts,
+                &[],
+                SystemTime::now()
+            )
+            .is_ok());
+        assert!(verifier
+            .verify_server_cert(
+                &Certificate(vec![1, 2, 3]),
+                &[],
+                &name,
+                &mut scts,
+                &[],
+                SystemTime::now()
+            )
+            .is_err());
+        let wrong_name = ServerName::try_from("mismatch.demo.genxt.network").unwrap();
+        assert!(verifier
+            .verify_server_cert(
+                &Certificate(der.clone()),
+                &[],
+                &wrong_name,
+                &mut scts,
+                &[],
+                SystemTime::now()
+            )
+            .is_err());
+        assert!(verifier
+            .verify_server_cert(
+                &Certificate(der),
+                &[],
+                &name,
+                &mut scts,
+                &[],
+                SystemTime::now() + Duration::from_secs(2 * 86400)
+            )
+            .is_err());
     }
     #[tokio::test]
     async fn scoped_client_rejects_other_origin_before_network() {
