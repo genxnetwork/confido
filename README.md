@@ -124,5 +124,7 @@ operator enrollments, not vulnerability-free certification. Revocation/advisory
 updates are not fetched by the verifier. AMD chain validation supports this fixed
 profile, not general-purpose PKIX path discovery.
 
-See [migration](docs/migration-0.4.md), [design](docs/design/evidence-verifier-0.4.md)
-and [third-party notices](THIRD_PARTY_NOTICES.md).
+See [migration](docs/migration-0.4.md), [design](docs/design/evidence-verifier-0.4.md),
+[implementation validation](docs/design/evidence-verifier-0.4-validation.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md). Historical `docs/revision/` artifacts
+record 0.3 results and must not be interpreted as 0.4 validation.

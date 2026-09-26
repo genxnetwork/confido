@@ -18,10 +18,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Clone azure-cvm-tooling
+    - name: Require a version tag
       run: |
-        git clone https://github.com/genxnetwork/azure-cvm-tooling.git
-        ln -sfn $GITHUB_WORKSPACE/azure-cvm-tooling $GITHUB_WORKSPACE/../
+        case "$GITHUB_REF" in
+          refs/tags/v*) ;;
+          *) echo "Run this release workflow on a v* tag" >&2; exit 1 ;;
+        esac
+
+    - name: Require matching binary versions
+      run: |
+        version="${GITHUB_REF#refs/tags/v}"
+        for manifest in server/Cargo.toml client/Cargo.toml; do
+          package_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$manifest" | head -n 1)
+          if [ "$package_version" != "$version" ]; then
+            echo "$manifest has version $package_version, expected $version" >&2
+            exit 1
+          fi
+        done
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
@@ -33,7 +46,7 @@ jobs:
         sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel tpm2-tss-devel rpm-build perl
 
         # Check if Perl and FindBin module are installed
-        perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; exit 0; }
+        perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; exit 1; }
         
         # Display Perl version for debugging
         perl -v
@@ -41,7 +54,7 @@ jobs:
         # Check if tss2-sys library is available via pkg-config
         if ! pkg-config --exists tss2-sys; then
           echo "tss2-sys.pc not found! Ensure that tpm2-tss-devel package is installed."
-          exit 0
+          exit 1
         fi
 
         # Display pkg-config flags for tss2-sys
@@ -50,13 +63,13 @@ jobs:
     - name: Build Server Package
       run: |
         cd server
-        cargo build --release
-        cp target/release/confido_server ./confido-server
+        cargo build --locked --release
+        cp target/release/confido-server ./confido-server
 
     - name: Build Client Package
       run: |
         cd client
-        cargo build --release
+        cargo build --locked --release
         cp target/release/confido_client ./confido-client
 
     - name: Create RPM Package for Server

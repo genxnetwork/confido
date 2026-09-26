@@ -1,0 +1,345 @@
+{
+  "run_id": "confido-revision-20260923",
+  "recorded_at": "2026-09-23T15:58:15.165320+00:00",
+  "repositories": {
+    "confido": {
+      "commit": "ccd4f377abe14808bab104607f9d74088ca3dd01",
+      "tree": "834299a4b537ef5e0499bb0094329015ae1c8f89",
+      "branch": "revision/attestation-update"
+    },
+    "chat": {
+      "commit": "9457cfe306bc4ef61907f7f19714e93bea78c168",
+      "tree": "43abaa0ed7938505d40890b515a0ecfcf936d4d0",
+      "branch": "revision/attestation-update"
+    },
+    "sidecar": {
+      "commit": "f3db79d2b2881fee2f5e1d9f04c1770d049273fe",
+      "tree": "d80eb22c804e557e4404e790e0d600d52a0821ef",
+      "branch": "revision/attestation-update"
+    },
+    "flint": {
+      "commit": "cfce29793343f9926a2f9d272d558d2a30bb84ca",
+      "tree": "e4fba0a8db5c2169fa94e4e9ee01bf1f55a04e6d",
+      "branch": "revision/attestation-update"
+    }
+  },
+  "build": {
+    "captured_at": "2026-09-23T15:47:35.439282+00:00",
+    "wheel": "confido_atls-0.3.0-cp310-cp310-manylinux_2_34_x86_64.whl",
+    "wheel_sha256": "04714cbe05615b5d2c5c052be35125dace146689060452856d34fec529582930",
+    "image": "sha256:15f2bc0adb8349478713ddb89ead7a1945a6e1230e647ed3baca5e76fd71722d",
+    "base_image": "ubuntu:22.04@sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc",
+    "python_lock_sha256": "4b07104c9df7d2d9185835b7500217dfd74146d8aa5cbafcc2746e1cfab1b3f1",
+    "source_commit": "572fc452741ebe1c9f215c6f4cfb46b8189fabb8",
+    "source_dirty": false
+  },
+  "build_core_commit": "2030f14",
+  "artifact_source_notes": [
+    "Confido source changes after the build core commit are harness, licensing and documentation changes; the library/server source trees used by the binaries are retained.",
+    "The tested sidecar binary was built from the implementation worktree before its commit; its exact binary and source snapshot are retained. Rebuilding from the committed tree changes Go VCS metadata."
+  ],
+  "acceptance": {
+    "started_at": "2026-09-23T15:53:26.093689+00:00",
+    "ended_at": "2026-09-23T15:53:58.571546+00:00",
+    "tests": [
+      {
+        "id": "installed_wheel_match",
+        "expected_admitted": true,
+        "observed_admitted": true,
+        "application_requests": 1
+      },
+      {
+        "id": "installed_wheel_mismatch",
+        "expected_admitted": false,
+        "observed_admitted": false,
+        "application_requests": 0
+      },
+      {
+        "id": "origin_scope_shared_certificate",
+        "rejected_targets": 3,
+        "application_requests": 0
+      },
+      {
+        "id": "wrong_tls_hostname",
+        "observed": "https_authentication_failed",
+        "application_requests": 0
+      },
+      {
+        "id": "changed_metadata",
+        "observed": "https_authentication_failed",
+        "application_requests": 0
+      },
+      {
+        "id": "container_pair",
+        "match_requests": 1,
+        "mismatch_requests": 0,
+        "image": "confidential-ai-example:0.3.0"
+      },
+      {
+        "id": "no_credentials_during_appraisal",
+        "discovery_report_requests": 18,
+        "credential_bearing_discovery_report_requests": 0
+      }
+    ],
+    "downstream": "synthetic OpenAI-compatible responder; no inference evaluated",
+    "hardware": "live VM TPM collector and AMD-endorsed SNP evidence",
+    "requests": [
+      {
+        "path": "/v1/chat/completions",
+        "authorization_present": true
+      },
+      {
+        "path": "/v1/chat/completions",
+        "authorization_present": true
+      }
+    ]
+  },
+  "tests": {
+    "rust-lib-tests.log": {
+      "passed": 25,
+      "sha256": "3a1f22ac05846efc415da53f18dece3b30aa583a1222ffe0c2b8c28cf083b5c2"
+    },
+    "server-tests.log": {
+      "passed": 6,
+      "sha256": "7b9d9146bea499a13f87cb34967d124c6ee3bfe7574fe7acff81ca72efd78e7e"
+    },
+    "python-wheel-tests.log": {
+      "passed": 12,
+      "sha256": "049a5bc57d3c313f450a1c8476c2075c2ef7986f346f91ec724e96228d0afb07"
+    },
+    "chat-tests.log": {
+      "passed": 5,
+      "sha256": "468b31af735e289556a89b369299d8a7d36b727c2fb67e798116b80ffc0ca2fa"
+    },
+    "go-tests.jsonl": {
+      "passed_test_events": 39,
+      "passed_packages": 4,
+      "sha256": "9acb3008a2b84d1cd86b0aadb3bf71b26aca479ff61c7da8abb5fe3193864ecf"
+    }
+  },
+  "replay_cases": 21,
+  "performance": {
+    "samples": 30,
+    "p95_local_appraisal_ms": 2.3161359999999998,
+    "target_ms": 3000,
+    "target_met": true,
+    "hardware": {
+      "Architecture": "x86_64",
+      "CPU(s)": "2",
+      "Model name": "19/01",
+      "Hypervisor vendor": "Microsoft"
+    },
+    "python": "3.10.12",
+    "workload": "Same retained matching SNP/HCL report, RSA quote, 24 SHA-256 PCRs, 47 enrolled IMA entries; all inputs local; release wheel; repeated historical appraisal"
+  },
+  "public_deployment": {
+    "routes": [
+      {
+        "url": "http://match.demo.genxt.network/service-info",
+        "status": 308,
+        "location": "https://match.demo.genxt.network/service-info"
+      },
+      {
+        "url": "https://match.demo.genxt.network/aTLS",
+        "status": 404,
+        "location": null
+      },
+      {
+        "host": "match.demo.genxt.network",
+        "public_version": "0.2.0",
+        "wire_version": null,
+        "service_id": "attestation-match.genxt.demo-chat"
+      },
+      {
+        "url": "http://mismatch.demo.genxt.network/service-info",
+        "status": 308,
+        "location": "https://mismatch.demo.genxt.network/service-info"
+      },
+      {
+        "url": "https://mismatch.demo.genxt.network/aTLS",
+        "status": 404,
+        "location": null
+      },
+      {
+        "host": "mismatch.demo.genxt.network",
+        "public_version": "0.2.0",
+        "wire_version": null,
+        "service_id": "attestation-mismatch.genxt.demo-chat"
+      }
+    ],
+    "deployment_config_and_binary_hashes_unchanged": true
+  },
+  "outstanding": [
+    "Public deployment promotion of the 0.3.0 server/sidecars is not performed; public service remains the checkpoint version.",
+    "Independent reviewer identity and sign-off are pending.",
+    "Confido licence metadata requires an owner decision before an open release.",
+    "TLS session binding, GPU/application/model appraisal, automated AMD revocation/advisory updates, governed reference promotion and server-side capabilities remain outside the declared implementation.",
+    "Adversarial live PCR/IMA changes were not injected into the shared production VM; invalid quote/PCR/log snapshots are covered by cryptographic mutation tests and collector retries were reviewed."
+  ],
+  "variance_notes": [
+    "Earlier harness runs completed all acceptance checks but exposed sudo/PTY process cleanup and PID-file ownership issues; these were corrected and the final run exited successfully with no surviving isolated listeners.",
+    "Acceptance uses actual hardware evidence and an explicitly synthetic downstream responder, so it validates admission and withholding, not external inference.",
+    "Exact runtime image is archived; apt package rebuilding at a later date may produce another image."
+  ],
+  "decision_identifiers": [
+    {
+      "origin": "https://localhost:18443",
+      "service_id": "attestation-match.genxt.demo-chat",
+      "status": "invalid_evidence",
+      "reason": "https_authentication_failed",
+      "evidence_sha256": "b5e4ef3f94ee4f406d65b875852090ab6971a8f6ceafd0645964c3ffd704a81a",
+      "nonce": "sIBzS6N8FlzpnxGfryP56XbVk3+dvUcyLIcFlYbkUW4=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-4.180.9.14.json",
+        "sha256": "a71fec03163d054e661a0edfb1cfe6ecde8bcfe46742b73d7004161bd93037e6"
+      },
+      "timings_ms": {
+        "collection_network": 236.714945,
+        "https_authentication": 49.671686,
+        "kds_network": 0.531309,
+        "local_appraisal": 11.204877999999999,
+        "reference_network": 92.29316
+      },
+      "application_admitted": false
+    },
+    {
+      "origin": "https://localhost:18443",
+      "service_id": "attestation-match.genxt.demo-chat",
+      "status": "passed",
+      "reason": "reference_match",
+      "evidence_sha256": "6da159d487f6b63ead9ce0657448e8f3803b9494abd57cdb8a2bd9450b652268",
+      "nonce": "DaGd0y0j7zJafoVFtKig+jEuhyD8G/c9zhfKWshsIjY=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-4.180.9.14.json",
+        "sha256": "a71fec03163d054e661a0edfb1cfe6ecde8bcfe46742b73d7004161bd93037e6"
+      },
+      "timings_ms": {
+        "collection_network": 77.766631,
+        "https_authentication": 10.361164,
+        "kds_network": 11145.614461,
+        "local_appraisal": 5.284484,
+        "reference_network": 53.868153
+      },
+      "application_admitted": true
+    },
+    {
+      "origin": "https://localhost:18444",
+      "service_id": "attestation-mismatch.genxt.demo-chat",
+      "status": "policy_mismatch",
+      "reason": "measurement_mismatch",
+      "evidence_sha256": "164db402ae45cd504a343eafd2ccc5088064c5de7095d2326072cef3cf25e8ad",
+      "nonce": "YjINEgOpkg9gRn62dt61gKm/0fjTbEiILLrw4QKYuJY=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-172.201.106.172.json",
+        "sha256": "c8fe1e57c55d0e1cfbc51c8615a09e56be168dade6f00ef652d98ba0a85c3db7"
+      },
+      "timings_ms": {
+        "collection_network": 848.431325,
+        "kds_network": 11247.536774,
+        "local_appraisal": 5.220283,
+        "reference_network": 47.035645
+      },
+      "application_admitted": false
+    },
+    {
+      "origin": "https://localhost:18443",
+      "service_id": "attestation-match.genxt.demo-chat",
+      "status": "passed",
+      "reason": "reference_match",
+      "evidence_sha256": "15fb6fe19a8894a6c42195ed2d416e66ea1899e2fa82cf64a2c4a44d2dfa2827",
+      "nonce": "ySqKiNWQwuj+Wxc/Ew8aGrnPIxQoMmMix5yCES0WZuc=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-4.180.9.14.json",
+        "sha256": "a71fec03163d054e661a0edfb1cfe6ecde8bcfe46742b73d7004161bd93037e6"
+      },
+      "timings_ms": {
+        "collection_network": 884.086489,
+        "https_authentication": 42.742976,
+        "kds_network": 971.033365,
+        "local_appraisal": 13.90362,
+        "reference_network": 250.67856700000002
+      },
+      "application_admitted": true
+    },
+    {
+      "origin": "https://localhost:18444",
+      "service_id": "attestation-mismatch.genxt.demo-chat",
+      "status": "policy_mismatch",
+      "reason": "measurement_mismatch",
+      "evidence_sha256": "cac20307fba6ba5ac62f71bffff7d1fe563843e38040e991f9d2db89b7ad3083",
+      "nonce": "ql6ibWCtjEz1m9j+0Tt1HEPiHbEXq/IDVosX7H0OFjU=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-172.201.106.172.json",
+        "sha256": "c8fe1e57c55d0e1cfbc51c8615a09e56be168dade6f00ef652d98ba0a85c3db7"
+      },
+      "timings_ms": {
+        "collection_network": 96.598129,
+        "kds_network": 0.349105,
+        "local_appraisal": 18.243789,
+        "reference_network": 236.31513900000002
+      },
+      "application_admitted": false
+    },
+    {
+      "origin": "https://localhost:18443",
+      "service_id": "attestation-match.genxt.demo-chat",
+      "status": "passed",
+      "reason": "reference_match",
+      "evidence_sha256": "26f5efbd0f78543f0126ac139244e9050487a9c7376edda90996c448a0d08b71",
+      "nonce": "5iodTvkpQv1NbmbP+LHKVJeoED879zU+YXfCJact67c=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-4.180.9.14.json",
+        "sha256": "a71fec03163d054e661a0edfb1cfe6ecde8bcfe46742b73d7004161bd93037e6"
+      },
+      "timings_ms": {
+        "collection_network": 74.56768,
+        "https_authentication": 54.307659,
+        "kds_network": 1.418623,
+        "local_appraisal": 5.501987,
+        "reference_network": 79.70176099999999
+      },
+      "application_admitted": true
+    },
+    {
+      "origin": "https://127.0.0.1:18443",
+      "service_id": "attestation-match.genxt.demo-chat",
+      "status": "invalid_evidence",
+      "reason": "https_authentication_failed",
+      "evidence_sha256": "13ca36e4f2b811c2eb30f4052dcf80fc7d488b57c29460b441935beff7fe5c85",
+      "nonce": "6SRMnMF+nsoI0BSBReLpjVlecTWwZlMlxISNbPl+FhY=",
+      "certificate_sha256": "b575b381b9f40820bac4c76c50191537817bf868b0cdc4d8f95f20e94486b0c7",
+      "reference": {
+        "repository": "genxnetwork/confido-trusted-repository",
+        "commit": "5a591c8ce52c379a5b64f98e45243a5ea5d529e9",
+        "path": "bb-attest-4.180.9.14.json",
+        "sha256": "a71fec03163d054e661a0edfb1cfe6ecde8bcfe46742b73d7004161bd93037e6"
+      },
+      "timings_ms": {
+        "collection_network": 42.244469,
+        "https_authentication": 30.097375999999997,
+        "kds_network": 0.415106,
+        "local_appraisal": 11.828887,
+        "reference_network": 77.628429
+      },
+      "application_admitted": false
+    }
+  ]
+}
