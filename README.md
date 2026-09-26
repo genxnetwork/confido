@@ -23,8 +23,10 @@ flowchart LR
 | `protocol/` | Wire v1 structures and binding transcript |
 | `lib/` | Portable synchronous verifier, bounded binary parsers |
 | `bindings/python/` | `confido-verifier` distribution / `confido_verifier` import |
+| `bindings/wasm/` | Same verifier compiled to WASM |
 | `server/` | Native TPM/IMA collector and `/tee-report` HTTP endpoint |
 | `client/` | HTTP collection, explicit verification and historical replay |
+| `extension/` | Local WASM worker, policy import, archive replay, permitted live retrieval |
 
 The chat application's native TLS transport lives in the sibling
 `confidential-ai-example/native_transport`, independently of this library.
@@ -83,7 +85,7 @@ result = confido_verifier.verify(
 caller-owned KDS retrieval. It never fetches anything. Invalid policy/context or
 outer size limits raise `ValueError`; evidence rejection is a structured result.
 The Rust API has the same inputs via `VerificationInput` and `VerificationContext`.
-A later branch adds the WASM wrapper and browser integration.
+The WASM wrapper accepts `Uint8Array` inputs and returns a JSON string.
 
 ## CLI
 
@@ -99,6 +101,14 @@ client/target/debug/confido_client migrate-archive old-v1.json new-v2.json UNIX_
 historical archived nonce; neither command grants live application access.
 Archives are created exclusively with mode 0600. Raw report/reference bytes are
 preserved in schema v2. CLI accepts legacy archives through its caller-side adapter.
+
+## Browser extension
+
+See [extension build and install](extension/README.md). Verification runs entirely
+inside its packaged WASM worker, with no native helper or remote verifier.
+Live retrieval is limited to the two configured demo origins plus AMD KDS and
+GitHub. Local replay does not need host permissions. Safari packaging requires
+macOS/Xcode and is not certified by Linux browser tests.
 
 ## Assurance boundary
 
