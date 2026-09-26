@@ -1,0 +1,19 @@
+{
+  "endpoint": "/tee-report",
+  "profile": "azure-snp-vtpm-ima/1",
+  "wireVersion": 1,
+  "method": "POST",
+  "nonce": {
+    "name": "nonce",
+    "in": "body",
+    "encoding": "base64",
+    "sizeBytes": 32
+  },
+  "response": {
+    "evidenceField": "evidence",
+    "certificateField": "certificate"
+  },
+  "sessionBinding": {
+    "supported": false
+  }
+}
