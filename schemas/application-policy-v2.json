@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "application-policy-v2",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        2
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "service_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verifier_policy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allow_untrusted_bootstrap": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "origin",
+    "service_id",
+    "verifier_policy"
+  ],
+  "additionalProperties": false
+}

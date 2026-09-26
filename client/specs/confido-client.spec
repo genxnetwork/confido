@@ -1,5 +1,5 @@
 Name: confido-client
-Version: 1.0.0
+Version: 0.4.0
 Release: 1%{?dist}
 Summary: Confido Client
 

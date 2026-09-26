@@ -6,9 +6,39 @@ on:
 permissions:
   contents: read
 jobs:
-  protocol:
+  portable:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install 1.98.0 --profile minimal
-      - run: cargo test --manifest-path protocol/Cargo.toml
+      - name: Portable build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang perl python3-dev python3-venv
+          rustup toolchain install 1.98.0 --profile minimal
+          rustup default 1.98.0
+      - name: Core and CLI
+        run: |
+          cargo test --locked --manifest-path lib/Cargo.toml
+          cargo build --locked --manifest-path client/Cargo.toml
+      - name: Installed Python package
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install 'maturin==1.15.0' jsonschema
+          make -C bindings/python install PYTHON=python
+          python -m unittest discover -s lib/tests -v
+  collector:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native collector prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config perl clang libclang-dev libtss2-dev
+          rustup toolchain install 1.98.0 --profile minimal
+          rustup default 1.98.0
+      - run: cargo test --locked --manifest-path server/Cargo.toml
+      - run: cargo build --locked --manifest-path server/Cargo.toml
+      - run: python3 -m unittest discover -s server/tests -p 'test_launcher.py' -v
