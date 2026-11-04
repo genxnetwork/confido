@@ -1,0 +1,102 @@
+"""Archive dependency attribution files from cargo metadata; never build code.
+
+Usage: cargo metadata --locked --format-version 1 ... > metadata.json
+       python3 scripts/collect_licenses.py metadata.json output.tar.gz
+"""
+
+import io
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tarfile
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_CRATES = {PROJECT_ROOT / name for name in ("lib", "client", "server")}
+ATTRIBUTION_PREFIXES = ("license", "licence", "copying", "copyright", "notice", "authors")
+
+
+def attribution_file(path):
+    name = path.name.lower()
+    return any(
+        name == prefix or name.startswith(prefix + separator)
+        for prefix in ATTRIBUTION_PREFIXES
+        for separator in (".", "-", "_")
+    )
+
+
+def repository_root(directory):
+    for parent in (directory, *directory.parents):
+        if (parent / ".git").exists():
+            return parent
+    return directory
+
+
+def add_bytes(archive, name, content):
+    entry = tarfile.TarInfo(name)
+    entry.size = len(content)
+    entry.mode = 0o644
+    archive.addfile(entry, io.BytesIO(content))
+
+
+def collect(metadata, output):
+    if not metadata.get("resolve"):
+        raise ValueError("Full cargo metadata with dependency resolution is required")
+    resolved = {node["id"] for node in metadata["resolve"]["nodes"]}
+    records = []
+    files = {}
+    for package in sorted(metadata["packages"], key=lambda p: p["id"]):
+        crate_root = Path(package["manifest_path"]).resolve().parent
+        if package["id"] not in resolved or crate_root in PROJECT_CRATES:
+            continue
+        label = f"{package['name']}-{package['version']}"
+        # Cargo may resolve two sources with the same name and version.
+        label = f"{len(records):04d}-{label}"
+        candidates = {
+            path: path.relative_to(crate_root)
+            for path in crate_root.rglob("*")
+            if path.is_file()
+            and not {".git", "target"}.intersection(path.relative_to(crate_root).parts)
+            and (attribution_file(path) or any(
+                part.lower() in {"license", "licenses", "licence", "licences", "notices"}
+                for part in path.relative_to(crate_root).parts[:-1]
+            ))
+        }
+        if package.get("license_file"):
+            path = Path(package["license_file"])
+            if not path.is_absolute():
+                path = crate_root / path
+            candidates[path] = Path("declared-license") / path.name
+        revision = None
+        if package.get("source") is None:
+            root = repository_root(crate_root)
+            for path in root.iterdir():
+                if path.is_file() and attribution_file(path):
+                    candidates[path] = Path("repository") / path.name
+            if (root / ".git").exists():
+                revision = subprocess.check_output(
+                    ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+                ).strip()
+        if not candidates:
+            raise ValueError(f"No attribution files found for {package['id']}; review required")
+        paths = []
+        for path, relative in sorted(candidates.items()):
+            name = f"third-party/{label}/{relative.as_posix()}"
+            files[name] = path.read_bytes()
+            paths.append(name)
+        records.append({
+            "name": package["name"], "version": package["version"],
+            "id": package["id"], "license": package.get("license"),
+            "repository": package.get("repository"), "source": package.get("source"),
+            "revision": revision, "files": paths,
+        })
+    with tarfile.open(output, "w:gz") as archive:
+        for name, content in sorted(files.items()):
+            add_bytes(archive, name, content)
+        add_bytes(archive, "third-party/packages.json",
+                  (json.dumps(records, indent=2) + "\n").encode())
+
+
+if __name__ == "__main__":
+    collect(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2])
