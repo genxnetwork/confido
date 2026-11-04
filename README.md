@@ -10,7 +10,7 @@ Active development of the original prototype ended in May 2025. The work raised 
 
 The proposed rework separates server-side attestation (the [RATS Attester](https://www.rfc-editor.org/rfc/rfc9334.html#section-7.2)) from verification (the [RATS Verifier](https://www.rfc-editor.org/rfc/rfc9334.html#section-7.4)). Confido is intended to focus on the Verifier role and appraise evidence using extended execution-trust models, including post-attestation state assurance. Trust reconstruction and capability authority are planned as separate, complementary modules. This architecture is not yet implemented in the prototype.
 
-[JAN DIGITRUST](https://www.jandigitrust.org/) plans to develop the verifier downstream and contribute changes back to this repository. Related work on formal security analysis and programmatic trust management is underway through the [GA4GH GIF TRE Open Suite](https://www.ga4gh.org/gif_project/19991/).
+[JAN DIGITRUST](https://www.jandigitrust.org/) plans to develop the verifier downstream and contribute changes back to this repository. Related work on formal security analysis and programmatic trust management is underway through the [GA4GH GIF TRE Open Suite](https://www.ga4gh.org/gif_project/tre-open-suite/).
 
 ## Repository layout
 
