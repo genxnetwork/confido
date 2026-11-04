@@ -1,10 +1,11 @@
 mod docker_utils;
+mod dmesg;
 
 use std::sync::Arc;
 use std::error::Error;
 use log::{info, error, debug};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use confido::atls::{AttestationRequest, AttestationResponse, ModuleLoadOrder};
+use confido::atls::{AttestationOptions, AttestationRequest, AttestationResponse, ModuleLoadOrder};
 use confido::nonce::Nonce;
 use confido::evidence::Evidence;
 use openssl::x509::X509;
@@ -154,22 +155,7 @@ impl Attester {
         Ok(ModuleLoadOrder { kernel, order })
     }
 
-    fn read_dmesg() -> io::Result<Vec<String>> {
-        let path = Path::new("/var/log/dmesg");
-        let file = File::open(&path)?;
-        let reader = io::BufReader::new(file);
-
-        let mut lines = Vec::new();
-        for line_result in reader.lines() {
-            let line = line_result?;
-            debug!("{}", line);
-            lines.push(line);
-        }
-
-        Ok(lines)
-    }
-
-    pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
+    pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>, options: &AttestationOptions) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
         let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
         // let certs = imds::get_certs()?;
@@ -184,14 +170,13 @@ impl Attester {
         };
         let docker_containers = get_running_containers().await;
         info!("cgpu_attestation: {:?}", cgpu_attestation);
-        let dmesg = match Self::read_dmesg() {
-            Ok(lines) => lines,
-            Err(e) => {
-                eprintln!("Failed to read dmesg: {}", e);
-                return Err(e.into());
-            }
+        let dmesg = if options.dmesg {
+            tokio::task::spawn_blocking(dmesg::read)
+                .await
+                .unwrap_or_else(|_| vec!["no dmesg available".to_string()])
+        } else {
+            Vec::new()
         };
-        error!("dmesg: {:?}", dmesg);
         Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers, dmesg))
     }
 }
@@ -205,7 +190,7 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: web::
             return HttpResponse::InternalServerError().finish();
         }
     };
-    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&**algorithms)).await {
+    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&**algorithms), &data.options).await {
         Ok(evidence) => {
             info!("Successfully gathered evidence");
             evidence
