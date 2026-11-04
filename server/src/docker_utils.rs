@@ -21,9 +21,10 @@ pub async fn get_running_containers() -> serde_json::Value {
             for container in containers {
                 let container_id = container.id.unwrap_or_default();
                 let image_name = container.image.unwrap_or_default();
+                let image_id = container.image_id.unwrap_or_default();
 
                 // Fetch image digest
-                let image_inspect = docker.inspect_image(&image_name).await;
+                let image_inspect = docker.inspect_image(&image_id).await;
 
                 let image_digest = match image_inspect {
                     Ok(image_info) => image_info
