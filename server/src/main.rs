@@ -1,10 +1,11 @@
 mod docker_utils;
+mod dmesg;
 
 use std::sync::Arc;
 use std::error::Error;
 use log::{info, error, debug};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use confido::atls::{AttestationRequest, AttestationResponse, ModuleLoadOrder};
+use confido::atls::{AttestationOptions, AttestationRequest, AttestationResponse, ModuleLoadOrder};
 use confido::nonce::Nonce;
 use confido::evidence::Evidence;
 use openssl::x509::X509;
@@ -16,7 +17,6 @@ use openssl::nid::Nid;
 use openssl::x509::X509NameBuilder;
 use openssl::pkey::PKey;
 use openssl::pkey::Private;
-use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
 use serde_json::Value;
@@ -155,7 +155,7 @@ impl Attester {
         Ok(ModuleLoadOrder { kernel, order })
     }
 
-    pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>) -> Result<Evidence, Box<dyn Error>> {
+    pub async fn gather_evidence(nonce: &Nonce, algorithms: Arc<Vec<vtpm::Algorithm>>, options: &AttestationOptions) -> Result<Evidence, Box<dyn Error>> {
         let report = vtpm::get_report()?;
         let quote = vtpm::get_quote(nonce.as_bytes(), algorithms.to_vec())?;
         // let certs = imds::get_certs()?;
@@ -169,8 +169,15 @@ impl Attester {
             }
         };
         let docker_containers = get_running_containers().await;
-        // info!("module_order: {:?}", module_order);
-        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers))
+        info!("cgpu_attestation: {:?}", cgpu_attestation);
+        let dmesg = if options.dmesg {
+            tokio::task::spawn_blocking(dmesg::read)
+                .await
+                .unwrap_or_else(|_| vec!["no dmesg available".to_string()])
+        } else {
+            Vec::new()
+        };
+        Ok(Evidence::new(report, quote, cgpu_attestation, module_load_order, docker_containers, dmesg))
     }
 }
 
@@ -183,7 +190,7 @@ async fn atls_http_route(data: web::Json<AttestationRequest>, certificate: web::
             return HttpResponse::InternalServerError().finish();
         }
     };
-    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&**algorithms)).await {
+    let evidence = match Attester::gather_evidence(&nonce.extend(&certificate), Arc::clone(&**algorithms), &data.options).await {
         Ok(evidence) => {
             info!("Successfully gathered evidence");
             evidence
