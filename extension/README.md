@@ -3,6 +3,11 @@
 All evidence verification runs in a local Worker using packaged Rust/WASM.
 There is no native messaging host, remote verifier, content script or chat client.
 
+`src/ui.js` owns the page, file inputs and Worker calls. `src/collection.js`
+retrieves live inputs with explicit origin, size and time limits. `src/worker.js`
+checks the packaged runtime and invokes the shared verifier. `build.py` packages
+those sources with the Rust/WASM binding and browser manifests.
+
 ## Build
 
 ```sh
@@ -73,7 +78,7 @@ verification, not evidence-to-connection binding.
 ## Runtime identity
 
 The bundle includes `runtime-manifest.json` with pipeline revision 2, source
-fingerprints and SHA-256 values for its JS/WASM assets. The Worker verifies these
+fingerprints and SHA-256 values for its page, JS, CSS and WASM assets. The Worker verifies these
 and checks the loaded WASM build metadata before inspecting or verifying evidence.
 A mixed bundle fails with a rebuild message; installing a new JS caller alongside
 an old WASM artifact is not supported. Metadata is separate from the result JSON.

@@ -1,5 +1,6 @@
 use crate::{
-    crypto, formats, reference::TRS, result::Stage, Status, VerificationError, VerificationResult,
+    crypto, formats, reference::ReferenceValues, result::Stage, Status, VerificationError,
+    VerificationResult,
 };
 use confido_protocol::{AttestationResponse, PROFILE, WIRE_VERSION};
 use serde::{Deserialize, Serialize};
@@ -48,7 +49,10 @@ impl VerifierPolicy {
                 && s.bytes()
                     .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
         }
-        if self.schema_version != 2 || self.profile != PROFILE || !["Milan", "Genoa"].contains(&self.platform.product.as_str()) {
+        if self.schema_version != 2
+            || self.profile != PROFILE
+            || !["Milan", "Genoa"].contains(&self.platform.product.as_str())
+        {
             return Err("Unsupported verifier policy/profile".into());
         }
         if !hex(&self.platform.ark_sha256, 64)
@@ -121,7 +125,45 @@ pub fn verify(
     let p: VerifierPolicy =
         serde_json::from_slice(policy_json).map_err(|e| VerificationError(e.to_string()))?;
     p.validate().map_err(VerificationError)?;
-    let mut r=VerificationResult{schema_version:2,scope:"evidence_only".into(),status:Status::InvalidEvidence,reason:"not_evaluated".into(),profile:PROFILE.into(),wire_version:WIRE_VERSION,evaluated_at:context.evaluation_unix_seconds,expected_nonce_base64:base64::encode(context.expected_nonce),report_sha256:sha256(input.report_json),policy_sha256:sha256(policy_json),input_sha256:json!({"amd_chain_pem":sha256(input.amd_chain_pem),"vcek_der":sha256(input.vcek_der),"reference_json":sha256(input.reference_json)}),reference:p.reference.clone(),checks:vec![],verified_claims:json!({}),verified_artifacts:json!({}),bindings:json!({"challenge_matches":false,"certificate_bound":false,"ima_log_bound":false}),coverage:json!({"ima_entries":0,"description":"Enrolled boot aggregate and kernel modules; no application/model/GPU coverage"}),limitations:vec!["Evidence only: transport peer, service identity and application admission are not evaluated".into(),"Challenge equality is not an independent freshness assertion".into(),"No TLS session binding or relay resistance claim".into(),"AMD revocation/security-advisory updates are not automatically checked".into(),"TCB floor and launch measurement are operator enrollments, not vulnerability-free certification".into(),"Guest collector/key custody and subsequent state changes remain assumptions".into(),"GPU and external inference are not appraised".into()]};
+    let mut r = VerificationResult {
+        schema_version: 2,
+        scope: "evidence_only".into(),
+        status: Status::InvalidEvidence,
+        reason: "not_evaluated".into(),
+        profile: PROFILE.into(),
+        wire_version: WIRE_VERSION,
+        evaluated_at: context.evaluation_unix_seconds,
+        expected_nonce_base64: base64::encode(context.expected_nonce),
+        report_sha256: sha256(input.report_json),
+        policy_sha256: sha256(policy_json),
+        input_sha256: json!({
+            "amd_chain_pem": sha256(input.amd_chain_pem),
+            "vcek_der": sha256(input.vcek_der),
+            "reference_json": sha256(input.reference_json),
+        }),
+        reference: p.reference.clone(),
+        checks: vec![],
+        verified_claims: json!({}),
+        verified_artifacts: json!({}),
+        bindings: json!({
+            "challenge_matches": false,
+            "certificate_bound": false,
+            "ima_log_bound": false,
+        }),
+        coverage: json!({
+            "ima_entries": 0,
+            "description": "Enrolled boot aggregate and kernel modules; no application/model/GPU coverage",
+        }),
+        limitations: vec![
+            "Evidence only: transport peer, service identity and application admission are not evaluated".into(),
+            "Challenge equality is not an independent freshness assertion".into(),
+            "No TLS session binding or relay resistance claim".into(),
+            "AMD revocation/security-advisory updates are not automatically checked".into(),
+            "TCB floor and launch measurement are operator enrollments, not vulnerability-free certification".into(),
+            "Guest collector/key custody and subsequent state changes remain assumptions".into(),
+            "GPU and external inference are not appraised".into(),
+        ],
+    };
     verify_inner(input, &p, context, &mut r);
     Ok(r)
 }
@@ -210,7 +252,12 @@ fn verify_inner(
         snp.product_hint()
     );
     if product_hint.is_some_and(|product| product != p.platform.product) {
-        r.fail(Stage::SnpReport, Status::PolicyMismatch, "platform_product_mismatch", "Signed SNP processor differs from enrolled product".into());
+        r.fail(
+            Stage::SnpReport,
+            Status::PolicyMismatch,
+            "platform_product_mismatch",
+            "Signed SNP processor differs from enrolled product".into(),
+        );
         return;
     }
     let chain = check!(
@@ -306,7 +353,14 @@ fn verify_inner(
         Stage::PlatformPolicy,
         "Enrolled launch measurement and minimum TCB; VMPL 0, debug/migration disabled",
     );
-    r.verified_claims = json!({"platform":{"stage":"snp_signature","product":p.platform.product,"reported_tcb":snp.tcb,"launch_measurement":hex::encode(snp.measurement)}});
+    r.verified_claims = json!({
+        "platform": {
+            "stage": "snp_signature",
+            "product": p.platform.product,
+            "reported_tcb": snp.tcb,
+            "launch_measurement": hex::encode(snp.measurement),
+        },
+    });
     let h = check!(
         Stage::HclKey,
         Status::InvalidEvidence,
@@ -391,7 +445,7 @@ fn verify_inner(
         );
         return;
     }
-    let reference: TRS = check!(
+    let reference: ReferenceValues = check!(
         Stage::Reference,
         Status::PolicyMismatch,
         "reference_invalid",
@@ -494,8 +548,10 @@ fn correspondence(
     if product.len() < 2
         || product[0] != 0x16
         || product[1] as usize != name.len()
-        || !(name == expected || (revision.starts_with(b"-") && revision.len() > 1
-            && revision[1..].iter().all(u8::is_ascii_alphanumeric)))
+        || !(name == expected
+            || (revision.starts_with(b"-")
+                && revision.len() > 1
+                && revision[1..].iter().all(u8::is_ascii_alphanumeric)))
     {
         return Err("VCEK product mismatch".into());
     }

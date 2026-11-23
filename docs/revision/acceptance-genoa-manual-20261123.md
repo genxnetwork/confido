@@ -1,6 +1,6 @@
 # Genoa manual-reference stage acceptance, 2026-11-23
 
-The final isolated live VM run passed with the JAN verifier policy pinned to
+The post-merge isolated live VM run passed with the JAN verifier policy pinned to
 the merged Teraveri `main` commit
 `3fa7913d44a377806bd94126589be1feb362b6cb`. The result is
 [`acceptance-genoa-manual-main-20261123.json`](acceptance-genoa-manual-main-20261123.json)

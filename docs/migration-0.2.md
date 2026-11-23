@@ -1,63 +1,59 @@
 # Migrating to Confido 0.2
 
-The earlier branches used provisional 0.3/0.4 numbers; this consolidated JAN
-revision targets 0.2.0. Historical reports and deployed artifacts retain their
-original identifiers. Those numbers do not describe a released upgrade path.
+Confido 0.2.0 is the current JAN development target, not a published upgrade
+from a released 0.3 or 0.4. Those numbers appeared in provisional Confido
+branches and historical artifacts. Keep identifiers in recorded runs unchanged;
+use 0.2.0 for new Confido packages and documentation.
 
-This is a breaking API change from the original attested-client interface. Wire profile `azure-snp-vtpm-ima/1` and the quote
-transcript stay at v1. Result, policy and archive schemas are now v2.
+This revision replaces the original attested-client API with a portable
+`evidence_only` verifier. The evidence profile `azure-snp-vtpm-ima/1` and quote
+transcript remain at wire version 1. Policy, result, input and archive JSON
+schemas use version 2; the verifier pipeline has revision 2. See the
+[schema catalog](../schemas/README.md) and [protocol contract](../protocol/README.md)
+for the distinct version boundaries.
 
-| Earlier development API | Confido 0.2 owner/API |
-|---|---|
+## Update callers
+
+| Earlier development API | Confido 0.2 replacement |
+| --- | --- |
 | `confido-atls`, `import confido` | `confido-verifier`, `import confido_verifier` |
-| `discover_py` | Removed; caller selects the HTTPS origin locally and posts a nonce directly to `/tee-report` |
-| `connect_py`, `AttestedSession` | Removed; caller collection → verify → transport → admission |
-| `appraise_offline_py` | Caller decodes archive, supplies nonce/time to `verify` |
-| legacy `aTLS_connect_py` | Removed |
-| `AppraisalConfig` with origin | Separate local verifier and application policies |
-| `application_admitted` in result | Separate application-decision-v2 record |
-| `timings_ms`, live/fresh/session claims | Caller measurements/context only |
+| `discover_py` | Caller selects the HTTPS origin and verifier policy locally; `inspect_requirements` only provides an untrusted selector for public KDS retrieval. |
+| `connect_py`, `AttestedSession`, `aTLS_connect_py` | Caller collects evidence, runs `verify`, authenticates the actual TLS peer, then makes its own admission decision. |
+| `appraise_offline_py` | `verify` with archived evidence bytes and independently chosen policy, expected nonce and evaluation time. |
+| `AppraisalConfig` with an origin | Separate caller-owned [application policy](../schemas/application-policy-v2.json) and [verifier policy](../schemas/verifier-policy-v2.json). |
+| `application_admitted` in the verifier result | Separate application-owned [decision record](../schemas/application-decision-v2.json). |
+| `timings_ms` and live/session/freshness claims in the result | Caller run metadata; the verifier reports only evidence appraisal. |
 
-The demo's `confidential-ai-example/profiles/{match,mismatch}.json` point to
-neighboring `verifier-*.json` files.
-Root, launch/TCB enrollments and immutable reference bytes/digests are preserved.
-A schema-valid policy still undergoes semantic/path validation in Rust.
+For a live run, the caller chooses an origin and locally approved verifier
+policy, generates an unpredictable 32-byte challenge and sends it to
+`POST /tee-report`. It supplies the exact report JSON, AMD ASK+ARK PEM, VCEK
+DER, reference and policy bytes to `verify`, together with the independently
+held challenge and an explicit Unix evaluation time. The Python wrapper
+returns a dict; WASM returns a JSON string. The [root README](../README.md#python-api)
+shows the call. Schema validation does not replace the verifier's semantic
+policy and cryptographic checks.
 
-Core arguments: exact report JSON bytes, ASK+ARK PEM bytes, VCEK DER, exact
-reference bytes, local policy bytes, independently held 32-byte expected nonce,
-and explicit Unix evaluation time. Python returns a dict. WASM returns JSON;
-DER artifacts use base64 consistently across wrappers. No timestamps are read
-from input as an assertion of current freshness.
+A `verified` result does not authenticate the observed TLS connection or grant
+application access. The caller owns deadlines and challenge reuse prevention.
+The native example authenticates the intended HTTPS peer with a credentialless
+`HEAD /tee-report` pinned to the quote-bound certificate before reading chat
+credentials. Browser extension verification is local, but its transport and
+admission behavior is separate. The [scope and limitations](../README.md#assurance-boundary)
+apply to both.
 
-Live callers create their own unpredictable challenge and enforce a deadline.
-Historical replay can reuse an archived challenge, but must label the operation
-historical. Stored result JSON is never a substitute for running the verifier.
-Use `confido_client migrate-archive OLD NEW TIME` for extension-compatible v2 input;
-legacy report reserialization changes its raw-byte fingerprint, not its v1 binding.
+## Migrate archives and result consumers
 
-The native chat demo owns its `_confai_transport` wheel. After evidence verification,
-it sends a credentialless `HEAD /tee-report` over TLS pinned to the quote-bound
-certificate, checking the hostname and certificate validity before reading chat
-credentials. The extension does not depend
-on this native transport and does not provide application admission.
+For an old schema-v1 archive, run
+`confido_client migrate-archive OLD NEW UNIX_SECONDS` to create a schema-v2
+archive for **historical replay**. The adapter reserializes the legacy report
+JSON: its raw-byte `report_sha256` may change, while the wire-v1 quote binding over
+the parsed IMA entries does not. Replay still needs a separately selected
+policy and explicit evaluation time. A saved result is never a substitute for
+running the verifier and never authorizes live application access.
 
-The transport package keeps its own version. When a downstream build invokes
-maturin directly, first run `make -C bindings/python licenses` in Confido to
-prepare the attribution files required by the verifier wheel. Confido's normal
-`make -C bindings/python wheel` entry point performs that step automatically.
-
-Packages retain individual Cargo locks/target paths to preserve collector scripts.
-There is no root Cargo workspace in this implementation. Portable cryptography is
-`ring` plus bounded parsers; clang builds its C backend into WASM. No OpenSSL/TPM
-runtime is linked into the verifier. Native test fixtures may use vendored OpenSSL.
-
-Roll out a matched set of verifier + app transport + caller code. Keep historical
-0.3 artifacts separate. Production certificate provisioning/reloads and package
-publication remain deployment actions; this source migration does not perform them.
-
-## Verification pipeline revision 2
-
-The successful `checks` sequence is:
+Result consumers should use `status`, `reason` and the ordered `checks`, not a
+legacy boolean or an archived verdict. A successful revision-2 run reports
+these 12 checks in order:
 
 ```text
 endorsements → snp_signature → vcek_correspondence → platform_policy
@@ -65,45 +61,41 @@ endorsements → snp_signature → vcek_correspondence → platform_policy
 → ima_reference → boot_aggregate → pcr10
 ```
 
-The pinned AMD chain authenticates the VCEK used for the SNP signature. Reported/
-committed TCB consistency and chip/TCB correspondence are evaluated afterward.
-An inconsistent TCB gives `snp_tcb_inconsistent` at `vcek_correspondence`.
-The included leaf certificate is parsed after the quote signature; an unsupported
-CA still gives `ca_certificate_unsupported` at `certificate`.
+Input/profile parsing and certificate parsing can fail before or between those
+checks; they do not add successful checks. The certificate is parsed after the
+quote signature, so an unsupported CA fails at `certificate` with
+`ca_certificate_unsupported`. Reported/committed TCB disagreement fails at
+`vcek_correspondence` with `snp_tcb_inconsistent`. Quote-stage failures use
+`quote_binding_invalid`; the stage identifies the failing dependency. IMA,
+boot aggregate and PCR-10 failures use `measurement_mismatch`. No later check
+passes after an earlier failure.
 
-`quote_binding` confirms one combined nonce/certificate/IMA transcript. All three
-binding flags remain false until that check succeeds. `quoted_pcrs` authenticates
-the supplied PCR banks and values separately. Quote failures retain the reason
-`quote_binding_invalid`; use the actual stage to identify the failed dependency.
-`ima_reference`, `boot_aggregate` and `pcr10` retain `measurement_mismatch` for
-measurement failures. No later check is marked passed after an earlier failure.
+`quote_binding` confirms the combined nonce/certificate/IMA transcript.
+`challenge_matches`, `certificate_bound` and `ima_log_bound` remain false
+until it passes; `quoted_pcrs` separately authenticates the supplied PCR
+banks. `verified_artifacts` may contain an authenticated vTPM key before the
+certificate binds. Confirmed IMA coverage remains zero until all measurement
+checks pass. The optional `coverage.pcr10_method` records an attempted
+`enrolled_sha256` comparison or `template_digest_replay`; check `pcr10` for
+the verdict. Render old combined `quote`/`measurements` checks as legacy, or
+replay original inputs to obtain current checks.
 
-`verified_artifacts` can contain the authenticated AK without a bound certificate.
-Confirmed IMA coverage stays zero until all measurement stages pass. The optional
-`coverage.pcr10_method` names the attempted method; the corresponding check tells
-whether it passed. `enrolled_sha256` is a pinned PCR comparison,
-`template_digest_replay` is template-digest replay.
+## Build and rollout
 
-Result/archive schema 2 and wire/binding v1 stay compatible. Legacy archives may
-contain combined `quote`/`measurements` checks; render them as legacy or replay the
-original inputs with independently selected nonce/time to obtain current checks.
-The Python formatter never recomputes an IMA verdict.
+Use matched verifier, caller and application transport builds. Python
+`confido_verifier.build_info()`, WASM `build_info()` and
+`confido_client --build-info` expose core `pipeline_revision = 2` plus source,
+wrapper, toolchain, target and build-profile fingerprints. These are
+diagnostic build identities, not evidence claims. The example app's runtime
+manifest and the extension's `runtime-manifest.json` check packaged assets
+against their sources; rebuild after changes. Safari packaging alone does not
+constitute Safari runtime acceptance.
 
-### Matched runtimes
-
-Python `confido_verifier.build_info()`, WASM `build_info()` (JSON string) and CLI
-`confido_client --build-info` expose `pipeline_revision = 2` in core metadata.
-Core source SHA-256 is target independent; each wrapper also records its own
-source SHA-256, Rust toolchain, target, build profile, feature list and flags.
-These fields are diagnostic metadata, not part of evidence claims or results.
-
-Source fingerprints cover explicit source/manifests/locks/build scripts, including
-uncommitted changes and additions. The chat app's `build/runtime.json` links those
-fingerprints to wheel bytes and the loaded native binary. `make dev-chat` rebuilds
-stale development artifacts and starts a fresh Python process. Direct invocation
-checks the manifest before collection and suggests `make dev-update` on mismatch.
-Containers check their embedded manifest and caller/native bytes without a checkout.
-
-Extension packaging emits `runtime-manifest.json`; the Worker checks bundled
-assets and embedded core/wrapper identities before handling evidence. Rebuild the
-extension after source changes. Safari packaging is not Safari runtime acceptance.
+The [build guide](../BUILDING.md) covers locked builds and wheel attribution.
+If invoking maturin directly for a downstream build, first run
+`make -C bindings/python licenses`; the normal
+`make -C bindings/python wheel` entry point does this automatically.
+Production certificate provisioning, package publication and public deployment
+promotion are separate operations. Current local acceptance and unresolved
+limitations are recorded in the [revision plan](revision-0.2.md) and
+[coverage matrix](revision/coverage.md).

@@ -4,6 +4,8 @@ fn error(e: impl ToString) -> PyErr {
 }
 #[pyfunction]
 #[pyo3(signature=(report,amd_chain,vcek,reference,policy,expected_nonce,evaluation_time))]
+// Preserve the stable Python call signature for verifier inputs and context.
+#[allow(clippy::too_many_arguments)]
 fn verify(
     py: Python<'_>,
     report: &[u8],
@@ -47,9 +49,18 @@ fn inspect_requirements(py: Python<'_>, report: &[u8]) -> PyResult<PyObject> {
 }
 #[pyfunction]
 fn build_info(py: Python<'_>) -> PyResult<PyObject> {
-    let info = serde_json::json!({"core": confido::build_info(), "wrapper": {
-    "version": env!("CARGO_PKG_VERSION"), "source_sha256": env!("CONFIDO_SOURCE_SHA256"),
-    "target": env!("CONFIDO_TARGET"), "rustc": env!("CONFIDO_RUSTC"), "flags": env!("CONFIDO_BUILD_FLAGS"), "features": env!("CONFIDO_BUILD_FEATURES"), "build_profile": env!("CONFIDO_BUILD_PROFILE")}});
+    let info = serde_json::json!({
+        "core": confido::build_info(),
+        "wrapper": {
+            "version": env!("CARGO_PKG_VERSION"),
+            "source_sha256": env!("CONFIDO_SOURCE_SHA256"),
+            "target": env!("CONFIDO_TARGET"),
+            "rustc": env!("CONFIDO_RUSTC"),
+            "flags": env!("CONFIDO_BUILD_FLAGS"),
+            "features": env!("CONFIDO_BUILD_FEATURES"),
+            "build_profile": env!("CONFIDO_BUILD_PROFILE"),
+        },
+    });
     Ok(py
         .import("json")?
         .call_method1("loads", (info.to_string(),))?

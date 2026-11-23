@@ -230,7 +230,10 @@ fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
         assert_eq!(snp.measurement, &[0x11; 48]);
         assert_eq!(snp.chip, &[0x22; 64]);
         assert_eq!(snp.report_data, &[0x33; 64]);
-        assert_eq!(snp.product_hint().unwrap(), if version == 2 { None } else { Some("Milan") });
+        assert_eq!(
+            snp.product_hint().unwrap(),
+            if version == 2 { None } else { Some("Milan") }
+        );
         crate::crypto::snp_signature(&snp, &cert).unwrap();
         // Version, established fields and v5's new fields are all signed.
         for offset in [0, 80, 144, 384, 416, 480, 504, 512, 671, 672, 744] {
@@ -258,7 +261,8 @@ fn processor_product_selection_is_bounded() {
     b[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
     for version in [3u32, 5] {
         b[32..36].copy_from_slice(&version.to_le_bytes());
-        for (family, model, expected) in [(0x19, 0x01, Some("Milan")), (0x19, 0x11, Some("Genoa"))] {
+        for (family, model, expected) in [(0x19, 0x01, Some("Milan")), (0x19, 0x11, Some("Genoa"))]
+        {
             b[32 + 392] = family;
             b[32 + 393] = model;
             assert_eq!(super::snp(&b).unwrap().product_hint().unwrap(), expected);

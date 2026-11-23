@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
 """Stop Confido listeners that conflict with the requested Linux bind address."""
+
 import ipaddress
 import os
-from pathlib import Path
 import re
 import select
 import signal
 import subprocess
 import sys
+from pathlib import Path
 
 
 def endpoint(value):
@@ -78,16 +78,22 @@ def stop(address):
             if select.select([fd], [], [], 0)[0]:
                 continue
             if Path(executable(pid)).name != "confido-server":
-                raise RuntimeError(f"Port is occupied by non-Confido process {pid}; refusing to stop it")
+                raise RuntimeError(
+                    f"Port is occupied by non-Confido process {pid}; refusing to stop it"
+                )
         for pid, fd in processes:
             if select.select([fd], [], [], 0)[0]:
                 continue
             # Recheck ownership before asking systemd to stop a service.
             if Path(executable(pid)).name != "confido-server":
-                raise RuntimeError(f"Process {pid} changed executable; refusing to stop it")
+                raise RuntimeError(
+                    f"Process {pid} changed executable; refusing to stop it"
+                )
             unit = service(pid)
             if unit:
-                print(f"Stopping {unit} (confido-server {pid}) on {address}", flush=True)
+                print(
+                    f"Stopping {unit} (confido-server {pid}) on {address}", flush=True
+                )
                 subprocess.run(["systemctl", "stop", unit], check=True, timeout=20)
             else:
                 print(f"Stopping confido-server {pid} on {address}", flush=True)
@@ -97,7 +103,9 @@ def stop(address):
                 if not select.select([fd], [], [], 2)[0]:
                     raise RuntimeError(f"Process {pid} did not exit")
         if listeners(address):
-            raise RuntimeError(f"A listener remains or restarted on {address}; refusing to start another server")
+            raise RuntimeError(
+                f"A listener remains or restarted on {address}; refusing to start another server"
+            )
     finally:
         for _, fd in processes:
             os.close(fd)

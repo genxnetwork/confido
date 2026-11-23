@@ -1,32 +1,31 @@
 # Genoa stage reference enrollment
 
-This document records the Confido verifier acceptance performed during the
-revision. The active Genoa stage policies, issuer decision and enrollment tool
-are owned by `confidential-ai-example`; see its
-`docs/genoa-stage-reference.md` for current rerun instructions.
-The current [direct-endpoint acceptance](acceptance-genoa-direct-20261123.md)
-exercised the revised routing and credentialless TLS peer probe on isolated
-local ports. It does not certify the public deployment.
+This records the 2026-11-23 Confido verifier stage and the remaining
+publication path. The Genoa policies, issuer decision and enrollment tool are
+owned by `confidential-ai-example`; its `docs/genoa-stage-reference.md` is
+the source for current policy-generation and isolated-run commands. The
+[direct-endpoint acceptance](acceptance-genoa-direct-20261123.md) exercised
+credentialless TLS peer verification on local ports, not public deployment.
 
 The public [Teraveri registry](https://github.com/teraveri/reference-value-registry)
 holds the exact reference bytes and a manifest describing their scope. GENXT's
 planned automated endorsement uses the
 [`confido-trusted-repository`](https://github.com/genxnetwork/confido-trusted-repository)
-workflow; the current stage uses the manual signature below. The application's
+workflow; the recorded stage uses the manual signature below. The application's
 locally controlled issuer policy accepts a specific
 publisher identity, then pins a full registry commit and reference hash in a v2
 verifier policy. No code in the registry decides which issuer the application trusts.
 
-The current Genoa entry is a **stage candidate** observed on the 1071 kernel.
+The recorded Genoa entry is a **stage candidate** observed on the 1071 kernel.
 It covers boot aggregate and kernel module IMA events only. Signing this
 manifest means GENXT recognizes the manifest; it does not certify the VM image,
 application, GPU, or model. Rebuilds and kernel changes need new measurements
 and a new entry rather than changing a pinned reference.
 
-## Temporary manual stage path
+## Manual stage path recorded on 2026-11-23
 
-GENXT Actions cannot currently start its required `test` job. For the urgent
-stage, GENXT has issued a one-use Ed25519 statement from the reviewed request
+GENXT Actions could not start its required `test` job for this run. For the
+stage, GENXT issued a one-use Ed25519 statement from the reviewed request
 using `tools/sign_manual_endorsement.py`. The private key existed only in the
 signing process. Its public key and signed statement are in the GENXT
 `revision/reference-endorsement` branch at commit
@@ -35,45 +34,30 @@ signing process. Its public key and signed statement are in the GENXT
 explicitly pins that key, this one manifest path and its SHA-256, and stage-candidate
 status. This manual signature provides exact-file integrity under that
 locally accepted key; it does not have the GitHub Actions OIDC provenance of
-the normal path below. The GENXT `master` rule still requires `test`.
+the normal path below. At the time of the run, the GENXT `master` rule still
+required `test`.
 
-The working stage policy
+The recorded stage policy
 `confidential-ai-example/profiles/verifier-genoa-stage-registry.json`
 pins the merged Teraveri `main` commit
 `3fa7913d44a377806bd94126589be1feb362b6cb`. The live Genoa positive and
 negative acceptance passed with this exact commit; see the
 [`manual acceptance`](acceptance-genoa-manual-20261123.md) and later
-[`direct-endpoint acceptance`](acceptance-genoa-direct-20261123.md). To regenerate the
-policy, use:
+[`direct-endpoint acceptance`](acceptance-genoa-direct-20261123.md). The
+application's `docs/genoa-stage-reference.md` gives the command for
+regenerating this policy from a clean checkout at the pinned commit. Python's
+`cryptography` package verifies the Ed25519 signature. An OIDC bundle requires
+a new issuer decision and application policy review.
 
-```bash
-python3 ../confidential-ai-example/scripts/enroll_reference.py \
-  --registry teraveri/reference-value-registry \
-  --commit 3fa7913d44a377806bd94126589be1feb362b6cb \
-  --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
-  --issuer GENXT-manual \
-  --registry-dir ../reference-value-registry \
-  --issuer-policy ../confidential-ai-example/profiles/reference-issuers-stage.json \
-  --platform ../confidential-ai-example/profiles/platform-genoa-stage.json \
-  --output ../confidential-ai-example/profiles/verifier-genoa-stage-registry.json
-```
-
-`--registry-dir` requires a clean checkout at that exact commit. Python's
-`cryptography` package verifies the Ed25519 signature. When GENXT Actions
-become available, follow the OIDC publication sequence below and replace the
-manual issuer decision in a new application policy review.
-
-## Publication sequence
+## Planned OIDC publication sequence
 
 1. The public registry `teraveri/reference-value-registry` is initialized at
    `fcf172f378225648d50a69028020b1798b90a0c9`. Keep that commit available:
    the GENXT request pins its manifest and reference bytes.
 2. Review and merge the GENXT `revision/reference-endorsement` branch into
-   `master`. Its branch rules require a pull request and the passing `test`
-   check, but no approving review. The Teraveri `main` rules require a pull
-   request and the passing `validate` check; there is currently only one
-   collaborator, so they require no separate approval. Both branches reject
-   force pushes and deletion.
+   `master`. At the time of this record, GENXT required a pull request and
+   passing `test`; Teraveri `main` required a pull request and passing
+   `validate`. Recheck branch rules before publication.
 3. Run GENXT **Endorse reference manifest** on `master` with request ID
    `genoa-stage-1071`. Download the `genxt-reference-endorsement` artifact and
    copy its `genxt.sigstore.json` to the registry entry's `endorsements/`
@@ -88,35 +72,26 @@ manual issuer decision in a new application policy review.
      --registry teraveri/reference-value-registry \
      --commit FULL_REGISTRY_COMMIT_WITH_BUNDLE \
      --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
-     --gh /mnt/tools/gh_2.105.0_linux_amd64/bin/gh \
      --issuer-policy ../confidential-ai-example/profiles/reference-issuers-stage.json \
      --platform ../confidential-ai-example/profiles/platform-genoa-stage.json \
      --output ../confidential-ai-example/profiles/verifier-genoa-stage.json
    ```
 
-   `gh` CLI is required for Sigstore verification. `--registry-dir` permits a
-   clean local checkout at the exact selected commit. The issuer policy is
-   `confidential-ai-example/profiles/reference-issuers-stage.json`,
+   `gh` CLI must be on `PATH` for Sigstore verification. `--registry-dir`
+   permits a clean local checkout at the exact selected commit. The issuer
+   policy is `confidential-ai-example/profiles/reference-issuers-stage.json`,
    and the observed platform enrollment is
    `confidential-ai-example/profiles/platform-genoa-stage.json`.
    Revisit the platform values when the VM image or firmware changes.
    Other publishers use a separate locally approved issuer entry and
    `--issuer NAME`; the registry cannot add a trusted issuer by itself.
-5. Run the isolated hardware acceptance against the new positive policy and
-   the Genoa negative policy, which keeps the same platform enrollment but
-   references an older, incompatible IMA baseline:
-
-   ```bash
-   ../confidential-ai-example/.venv/bin/python ../confidential-ai-example/scripts/stage_demo.py \
-     --out /private/new-genoa-stage-run \
-     --match-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage.json \
-     --mismatch-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage-mismatch.json
-   ```
-
-   Save `acceptance.json` and the full hashes of Confido, sidecar, app/wheel,
-   registry commit, and policies. The stage responder is synthetic and does
-   not evaluate external inference. Public service promotion is a separate
-   deployment step.
+5. Run the [isolated hardware rerun](rerun.md), setting
+   `--match-verifier-policy` to the newly generated positive policy. Keep
+   the Genoa negative policy, which retains the same platform enrollment but
+   an incompatible IMA reference. Save
+   `acceptance.json` and the full hashes of Confido, application/transport
+   wheels, registry commit and policies. The responder is synthetic; public
+   service promotion is a separate deployment step.
 
 The publisher signature, pinned commit, exact file hash, and platform
 enrollment have distinct purposes. A signed stage candidate is still only a

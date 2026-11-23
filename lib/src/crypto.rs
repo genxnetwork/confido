@@ -159,7 +159,13 @@ fn key_identifier(child: &X509Certificate<'_>, issuer: &X509Certificate<'_>) -> 
                 return Err("Authority certificate serial mismatch".into());
             }
             if let Some(names) = &aki.authority_cert_issuer {
-                if !names.iter().any(|n| matches!(n, x509_parser::extensions::GeneralName::DirectoryName(name) if name == issuer.issuer())) {
+                if !names.iter().any(|name| {
+                    matches!(
+                        name,
+                        x509_parser::extensions::GeneralName::DirectoryName(value)
+                            if value == issuer.issuer()
+                    )
+                }) {
                     return Err("Authority certificate issuer mismatch".into());
                 }
             }

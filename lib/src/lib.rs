@@ -12,7 +12,14 @@ pub use verify::*;
 
 /// Build identity is separate from deterministic verification results.
 pub fn build_info() -> serde_json::Value {
-    serde_json::json!({"version": env!("CARGO_PKG_VERSION"), "pipeline_revision": 2,
-        "source_sha256": env!("CONFIDO_SOURCE_SHA256"), "target": env!("CONFIDO_TARGET"),
-        "rustc": env!("CONFIDO_RUSTC"), "flags": env!("CONFIDO_BUILD_FLAGS"), "features": env!("CONFIDO_BUILD_FEATURES"), "build_profile": env!("CONFIDO_BUILD_PROFILE")})
+    serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "pipeline_revision": 2,
+        "source_sha256": env!("CONFIDO_SOURCE_SHA256"),
+        "target": env!("CONFIDO_TARGET"),
+        "rustc": env!("CONFIDO_RUSTC"),
+        "flags": env!("CONFIDO_BUILD_FLAGS"),
+        "features": env!("CONFIDO_BUILD_FEATURES"),
+        "build_profile": env!("CONFIDO_BUILD_PROFILE"),
+    })
 }

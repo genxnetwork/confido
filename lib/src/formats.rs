@@ -36,9 +36,11 @@ impl Snp<'_> {
         let product = match (self.raw[392], self.raw[393]) {
             (0x19, 0x00..=0x0f) => "Milan",
             (0x19, 0x10..=0x1f) => "Genoa",
-            (family, model) => return Err(format!(
-                "Unsupported SNP processor family {family:#04x}, model {model:#04x}"
-            )),
+            (family, model) => {
+                return Err(format!(
+                    "Unsupported SNP processor family {family:#04x}, model {model:#04x}"
+                ))
+            }
         };
         Ok(Some(product))
     }

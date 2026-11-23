@@ -44,7 +44,17 @@ pub fn inspect_requirements(report: &[u8]) -> Result<String, JsValue> {
 
 #[wasm_bindgen]
 pub fn build_info() -> String {
-    (serde_json::json!({"core": confido::build_info(), "wrapper": {
-    "version": env!("CARGO_PKG_VERSION"), "source_sha256": env!("CONFIDO_SOURCE_SHA256"),
-    "target": env!("CONFIDO_TARGET"), "rustc": env!("CONFIDO_RUSTC"), "flags": env!("CONFIDO_BUILD_FLAGS"), "features": env!("CONFIDO_BUILD_FEATURES"), "build_profile": env!("CONFIDO_BUILD_PROFILE")}})).to_string()
+    serde_json::json!({
+        "core": confido::build_info(),
+        "wrapper": {
+            "version": env!("CARGO_PKG_VERSION"),
+            "source_sha256": env!("CONFIDO_SOURCE_SHA256"),
+            "target": env!("CONFIDO_TARGET"),
+            "rustc": env!("CONFIDO_RUSTC"),
+            "flags": env!("CONFIDO_BUILD_FLAGS"),
+            "features": env!("CONFIDO_BUILD_FEATURES"),
+            "build_profile": env!("CONFIDO_BUILD_PROFILE"),
+        },
+    })
+    .to_string()
 }

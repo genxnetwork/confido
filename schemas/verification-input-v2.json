@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "verification-input-v2",
+  "description": "Serialized verifier invocation containing exact input bytes, caller-selected policy bytes, and explicit evaluation context.",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -9,6 +10,7 @@
       ]
     },
     "inputs": {
+      "description": "Untrusted evidence and reference bytes encoded for JSON transport; verification establishes which claims are authenticated.",
       "type": "object",
       "properties": {
         "report": {
@@ -37,10 +39,12 @@
       "additionalProperties": false
     },
     "policy": {
+      "description": "Exact caller-selected verifier-policy JSON bytes encoded as base64.",
       "type": "string",
       "contentEncoding": "base64"
     },
     "context": {
+      "description": "Expected nonce and evaluation time supplied independently by the caller; live freshness and nonce reuse remain caller responsibilities.",
       "type": "object",
       "properties": {
         "expected_nonce_base64": {

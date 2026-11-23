@@ -225,7 +225,11 @@ fn validate_leaf_certificate(certificate: &X509) -> Result<(), Box<dyn Error>> {
         .basic_constraints()?
         .is_some_and(|constraints| constraints.value.ca)
     {
-        return Err("Collector certificate has CA:TRUE; expected the HTTPS leaf certificate. Use the same certificate directory as Nginx (normally /etc/confido).".into());
+        return Err(concat!(
+            "Collector certificate has CA:TRUE; expected the HTTPS leaf certificate. ",
+            "Use the same certificate directory as Nginx (normally /etc/confido)."
+        )
+        .into());
     }
     Ok(())
 }
@@ -306,7 +310,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .required(true)
                 .index(3)
                 .multiple_values(true)
-                .possible_values(&["sha1", "sha256"]),
+                .possible_values(["sha1", "sha256"]),
         )
         .arg(
             clap::Arg::new("tls-hostname")

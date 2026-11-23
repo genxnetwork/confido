@@ -4,20 +4,34 @@ Usage: cargo metadata --locked --format-version 1 ... > metadata.json
        python3 scripts/collect_licenses.py metadata.json output.tar.gz
 """
 
-import io
 import hashlib
+import io
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tarfile
-
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PROJECT_CRATES = {PROJECT_ROOT / name for name in (
-    "lib", "client", "server", "protocol", "bindings/python", "bindings/wasm"
-)}
-ATTRIBUTION_PREFIXES = ("license", "licence", "copying", "copyright", "notice", "authors")
+PROJECT_CRATES = {
+    PROJECT_ROOT / name
+    for name in (
+        "lib",
+        "client",
+        "server",
+        "protocol",
+        "bindings/python",
+        "bindings/wasm",
+    )
+}
+ATTRIBUTION_PREFIXES = (
+    "license",
+    "licence",
+    "copying",
+    "copyright",
+    "notice",
+    "authors",
+)
 
 
 def attribution_file(path):
@@ -61,10 +75,14 @@ def collect(metadata, output):
             for path in crate_root.rglob("*")
             if path.is_file()
             and not {".git", "target"}.intersection(path.relative_to(crate_root).parts)
-            and (attribution_file(path) or any(
-                part.lower() in {"license", "licenses", "licence", "licences", "notices"}
-                for part in path.relative_to(crate_root).parts[:-1]
-            ))
+            and (
+                attribution_file(path)
+                or any(
+                    part.lower()
+                    in {"license", "licenses", "licence", "licences", "notices"}
+                    for part in path.relative_to(crate_root).parts[:-1]
+                )
+            )
         }
         if package.get("license_file"):
             path = Path(package["license_file"])
@@ -82,15 +100,22 @@ def collect(metadata, output):
                     ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
                 ).strip()
         if not candidates:
-            supplement = PROJECT_ROOT / "third_party" / f"{package['name']}-{package['version']}"
+            supplement = (
+                PROJECT_ROOT / "third_party" / f"{package['name']}-{package['version']}"
+            )
             provenance = supplement / "provenance.json"
             if provenance.is_file():
                 record = json.loads(provenance.read_text())
                 vcs = crate_root / ".cargo_vcs_info.json"
-                if (record["crate"] != package["name"] or record["version"] != package["version"]
-                        or not vcs.is_file()
-                        or json.loads(vcs.read_text())["git"]["sha1"] != record["commit"]):
-                    raise ValueError(f"Attribution provenance differs for {package['id']}")
+                if (
+                    record["crate"] != package["name"]
+                    or record["version"] != package["version"]
+                    or not vcs.is_file()
+                    or json.loads(vcs.read_text())["git"]["sha1"] != record["commit"]
+                ):
+                    raise ValueError(
+                        f"Attribution provenance differs for {package['id']}"
+                    )
                 for item in record["files"]:
                     path = supplement / item["file"]
                     if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
@@ -98,23 +123,34 @@ def collect(metadata, output):
                     candidates[path] = Path("preserved-upstream") / path.name
                 candidates[provenance] = Path("preserved-upstream/provenance.json")
             if not candidates:
-                raise ValueError(f"No attribution files found for {package['id']}; review required")
+                raise ValueError(
+                    f"No attribution files found for {package['id']}; review required"
+                )
         paths = []
         for path, relative in sorted(candidates.items()):
             name = f"third-party/{label}/{relative.as_posix()}"
             files[name] = path.read_bytes()
             paths.append(name)
-        records.append({
-            "name": package["name"], "version": package["version"],
-            "id": package["id"], "license": package.get("license"),
-            "repository": package.get("repository"), "source": package.get("source"),
-            "revision": revision, "files": paths,
-        })
+        records.append(
+            {
+                "name": package["name"],
+                "version": package["version"],
+                "id": package["id"],
+                "license": package.get("license"),
+                "repository": package.get("repository"),
+                "source": package.get("source"),
+                "revision": revision,
+                "files": paths,
+            }
+        )
     with tarfile.open(output, "w:gz") as archive:
         for name, content in sorted(files.items()):
             add_bytes(archive, name, content)
-        add_bytes(archive, "third-party/packages.json",
-                  (json.dumps(records, indent=2) + "\n").encode())
+        add_bytes(
+            archive,
+            "third-party/packages.json",
+            (json.dumps(records, indent=2) + "\n").encode(),
+        )
 
 
 if __name__ == "__main__":

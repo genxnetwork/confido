@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "application-policy-v2",
+  "description": "Caller-owned origin and verifier-policy selection for the cooperating application; this record is not a verifier trust decision.",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -9,15 +10,18 @@
       ]
     },
     "origin": {
+      "description": "Locally approved HTTPS origin for evidence collection and later application access.",
       "type": "string",
       "format": "uri",
       "pattern": "^https://"
     },
     "verifier_policy": {
+      "description": "Path to the caller-selected verifier policy, resolved by the application.",
       "type": "string",
       "minLength": 1
     },
     "allow_untrusted_bootstrap": {
+      "description": "Permit credentialless evidence retrieval before the attested TLS peer is authenticated; admission still requires the separate peer check.",
       "type": "boolean"
     }
   },

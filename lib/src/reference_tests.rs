@@ -1,6 +1,6 @@
 use super::*;
 
-fn record(template: &str, algo: vtpm::Algorithm) -> (TRS, ModuleLoadOrder) {
+fn record(template: &str, algo: vtpm::Algorithm) -> (ReferenceValues, ModuleLoadOrder) {
     let measurements = ["boot_aggregate", "module.ko"]
         .iter()
         .enumerate()
@@ -22,7 +22,7 @@ fn record(template: &str, algo: vtpm::Algorithm) -> (TRS, ModuleLoadOrder) {
             .collect(),
     };
     (
-        TRS {
+        ReferenceValues {
             ima_measurements: measurements,
             pcr10_sha256: None,
         },
@@ -44,11 +44,11 @@ fn replays_both_templates_with_the_selected_bank() {
                 "a7f2fad943905535b10ccf63c832802ed84eaffb15e4fb6bee86a817c35eb833",
             ),
         ] {
-            let (trs, order) = record(template, algo.clone());
-            let (reported_algo, digest) = trs.ima_calculate(&order, algo.clone()).unwrap();
+            let (trs, order) = record(template, algo);
+            let (reported_algo, digest) = trs.ima_calculate(&order, algo).unwrap();
             assert_eq!(reported_algo, algo);
             assert_eq!(hex::encode(&digest), expected);
-            trs.verify_pcr10(&order, algo.clone(), &digest).unwrap();
+            trs.verify_pcr10(&order, algo, &digest).unwrap();
             let mut changed = digest;
             changed[0] ^= 1;
             assert_eq!(
@@ -136,7 +136,7 @@ fn validates_pinned_sha256_pcr_and_still_checks_order() {
 #[test]
 fn boot_aggregate_selects_the_bank_and_validates_its_digest() {
     for algo in [vtpm::Algorithm::Sha1, vtpm::Algorithm::Sha256] {
-        let (mut trs, _) = record("ima-ng", algo.clone());
+        let (mut trs, _) = record("ima-ng", algo);
         assert_eq!(trs.boot_aggregate_algorithm().unwrap(), algo);
         trs.ima_measurements[0].filedata_hash = "00".into();
         assert!(trs.boot_aggregate_algorithm().is_err());

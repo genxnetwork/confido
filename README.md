@@ -22,7 +22,7 @@ flowchart LR
 
 | Directory | Responsibility |
 |---|---|
-| `protocol/` | Wire v1 structures and binding transcript |
+| [`protocol/`](protocol/README.md) | Wire v1 structures and binding transcript |
 | `lib/` | Portable synchronous verifier, bounded binary parsers |
 | `bindings/python/` | `confido-verifier` distribution / `confido_verifier` import |
 | `bindings/wasm/` | Same verifier compiled to WASM |
@@ -132,8 +132,8 @@ operator enrollments, not vulnerability-free certification. Revocation/advisory
 updates are not fetched by the verifier. AMD chain validation supports this fixed
 profile, not general-purpose PKIX path discovery.
 
-See the [0.2 revision plan and validation](docs/revision-0.2.md),
-[migration guide](docs/migration-0.2.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+See the [documentation index](docs/README.md), [schema catalog](schemas/README.md)
+and [third-party notices](THIRD_PARTY_NOTICES.md).
 Earlier design and validation records remain available in Git history at
 `ec49a75`. They describe older deployment snapshots and are not acceptance
 evidence for the direct report endpoint.

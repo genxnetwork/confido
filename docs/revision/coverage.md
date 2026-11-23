@@ -1,7 +1,8 @@
 # Claim → code → test matrix
 
-Earlier implementation runs remain in Git history. The current direct-endpoint
-Genoa run is recorded in [the acceptance record](acceptance-genoa-direct-20261123.md).
+Earlier implementation runs remain in Git history. The 2026-11-23
+direct-endpoint Genoa run is recorded in
+[the acceptance record](acceptance-genoa-direct-20261123.md).
 It tested an isolated local route and synthetic downstream responder, not public
 deployment or external inference.
 
@@ -19,7 +20,7 @@ deployment or external inference.
 | Direct challenge-bound report endpoint | `server/src/main.rs`, `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; fresh Genoa run | implemented and locally accepted |
 | Bounded collection and retrieval | `server/src/main.rs`; application `demo/collection.py` | 7 server tests, 7 launcher tests, application retry/size tests | implemented; adversarial live IMA race not injected |
 | Python, CLI and browser verifier parity | `bindings/`, `extension/`, `scripts/browser_checks.py` | seven current-hardware cases per runtime; installed Chromium MV3/CSP/asset checks | implemented; Safari runtime not accepted |
-| Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 current Genoa replays, p95 3.93 ms; network excluded | observed for this workload only |
+| Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 Genoa replays, p95 3.93 ms; network excluded | target met for this local workload only |
 | Frozen container on the direct endpoint | application Docker build and runtime manifest | current Genoa match/mismatch in both installed wheel and rebuilt local image; image digest in acceptance record | implemented and locally accepted |
 | Public 0.2.0 deployment promotion | application-owned `deploy/genxt-demo/` and preflight | current run used isolated localhost listeners | pending public configuration review and promotion |
 | TLS session binding / relay resistance | no binder | none | unsupported |
@@ -29,7 +30,12 @@ deployment or external inference.
 
 ## Remaining decisions and assumptions
 
-- Repository and package metadata declare Apache-2.0; third-party attribution and release artifacts still need final review before publication.
-- AMD revocation and security-advisory updates are not automatic. The minimum TCB and launch measurement are operator-enrolled baselines.
-- Guest collector behavior, TLS key custody, enrollment integrity and post-appraisal changes remain assumptions. A fresh quote does not prove a newly generated SNP report.
-- The public demonstration's external inference is outside the measured boundary; admission is enforced by a cooperating client.
+- Repository and package metadata declare Apache-2.0; third-party attribution
+  and release artifacts still need final review before publication.
+- AMD revocation and security-advisory updates are not automatic. The minimum
+  TCB and launch measurement are operator-enrolled baselines.
+- Guest collector behavior, TLS key custody, enrollment integrity and
+  post-appraisal changes remain assumptions. A fresh quote does not prove a
+  newly generated SNP report.
+- The public demonstration's external inference is outside the measured
+  boundary; admission is enforced by a cooperating client.

@@ -51,7 +51,7 @@ session binding, or application/model/GPU state. The GENXT publisher path remain
 the explicitly pinned manual stage statement, not a completed Actions OIDC
 endorsement.
 
-## Current container rerun
+## Container rerun at the recorded baseline
 
 After the direct-endpoint code and documentation commits, the application at
 `b752fc6d1daad467dea67a32bc4622d6049bb74e` rebuilt both wheels and the

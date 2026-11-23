@@ -5,7 +5,7 @@ use confido_protocol::{IMALogEntry, ModuleLoadOrder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct TRS {
+pub struct ReferenceValues {
     pub ima_measurements: Vec<IMALogEntry>,
     #[serde(default)]
     pub pcr10_sha256: Option<String>,
@@ -15,7 +15,7 @@ pub struct TRS {
 #[path = "reference_tests.rs"]
 mod tests;
 
-impl TRS {
+impl ReferenceValues {
     pub fn compare_measurements(&self, actual: &[IMALogEntry]) -> Vec<String> {
         let mut mismatches = Vec::new();
         if self.ima_measurements.len() != actual.len() {

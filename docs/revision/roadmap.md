@@ -14,6 +14,13 @@
 | Service and SDK integration | direct report endpoint and origin-scoped Rust/Python API | relying-party SDK/service adapters; workload identity, user consent and operation admission |
 | SOC/GRC integration | redacted result schema, evidence digests and run records | audit adapters and retention policy; identity, access controls and external evidence review |
 
-RFC 9261 is a standard; the remote-attestation SEAT integration remains draft work. No IETF consensus on a completed attestation profile or existing local BoringSSL integration is implied. A JSON declaration and certificate hash provide no TLS exporter context.
+RFC 9261 is a Proposed Standard; remote-attestation SEAT integration remains
+Internet-Draft work as of 2026-11-23. No completed attestation profile or local
+BoringSSL integration is implied. A JSON declaration and certificate hash
+provide no TLS exporter context.
 
-First prerequisites for stronger operational assurance: review AMD revocation/advisory handling and current minimum TCB policy; validate/enroll application/configuration measurements; define TLS key custody and post-appraisal invalidation. These changes must produce their own evidence and tests before stronger claims are made.
+First prerequisites for stronger operational assurance: review AMD
+revocation/advisory handling and the minimum TCB policy; validate and enroll
+application/configuration measurements; define TLS key custody and
+post-appraisal invalidation. These changes need their own evidence and tests
+before stronger claims are made.

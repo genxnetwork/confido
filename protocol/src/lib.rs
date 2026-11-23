@@ -207,7 +207,7 @@ impl Nonce {
         let mut data =
             Vec::with_capacity(self.nonce.len() + certificate_bytes.len() + binding.len());
         data.extend_from_slice(&self.nonce);
-        data.extend_from_slice(&certificate_bytes);
+        data.extend_from_slice(certificate_bytes);
         data.extend_from_slice(binding);
         self.nonce = digest(&SHA256, &data).as_ref().to_vec();
         self
@@ -222,9 +222,9 @@ impl Nonce {
     }
 }
 
-impl Into<Base64> for Nonce {
-    fn into(self) -> Base64 {
-        let base64_encoded = base64::encode(&self.nonce);
+impl From<Nonce> for Base64 {
+    fn from(nonce: Nonce) -> Self {
+        let base64_encoded = base64::encode(&nonce.nonce);
         Base64::from_base64(base64_encoded)
     }
 }

@@ -77,55 +77,48 @@ access policy and a separate claim boundary.
   recorded separately from unit tests. Unavailable checks remain explicit.
 - The extraction checkpoint is committed and reproducible before creating Attestor.
 
-## Current validation
+## Latest dated validation
 
-The live direct-endpoint code baseline is Confido
-`402f252bf4a49da83c9bc91eaa12d6eb3a6c37fa` and application
-`54813aca0047d780177eac5930223b030fd0d318` on kernel
-`6.8.0-1071-azure-fde`. This is a local acceptance baseline, not extraction
-checkpoint R. The full source/policy/artifact identifiers and limitations are in
-the [Genoa direct-endpoint acceptance](revision/acceptance-genoa-direct-20261123.md).
+The latest dated local baseline is Confido
+`402f252bf4a49da83c9bc91eaa12d6eb3a6c37fa` and
+`confidential-ai-example` `54813aca0047d780177eac5930223b030fd0d318`
+on kernel `6.8.0-1071-azure-fde`. The
+[direct-endpoint acceptance](revision/acceptance-genoa-direct-20261123.md)
+pins the source, policies, binaries, wheels and run artifacts; the earlier
+[manual-reference acceptance](revision/acceptance-genoa-manual-20261123.md)
+records the initial publisher path. These records validate their pinned
+revisions, not later edits in this working tree.
 
-| Check | Current result |
-|---|---|
-| Locked native core / collector tests | 15 / 7 passed |
-| Collector launcher tests | 7 passed with isolated processes |
-| Installed Python verifier API/schema tests | 7 passed |
-| Core and WASM dependency guard | Passed; no TPM/network/TLS runtime |
-| Current Genoa match/mismatch on direct endpoint | All 12 stages passed for match; negative reference rejected with zero application requests |
-| Native transport | Shared-certificate cross-origin and wrong-host rejection passed; six evidence requests used zero application credentials |
-| Current frozen container | Rebuilt image `sha256:e2fa324e…` passed match/mismatch through the direct endpoint; nine evidence requests carried zero application credentials |
-| Current Genoa archive replay | 27 cases passed; 30 local appraisals p95 3.93 ms, excluding collection/network |
-| CLI / Python / Chromium / Firefox parity | Identical results for seven cases in each runtime |
-| Installed Chromium MV3 | Worker, CSP, replay and stale-asset checks passed |
-| Downstream application/transport | 38 application and 2 transport tests passed |
-| IMA enrollment | 45 entries: boot aggregate and 44 kernel modules; no application/model/GPU measurement |
+At that baseline, locked native and Python tests, dependency guards, CLI/Python
+and Chromium/Firefox parity, native transport, and downstream application
+tests passed. The live Genoa match passed all 12 verifier checks; the mismatched
+reference was rejected before application traffic. The rebuilt local
+container passed the same positive/negative route. The 27-case archive replay
+and local timing are recorded in the direct-endpoint acceptance. The
+[coverage matrix](revision/coverage.md) maps each claim to its test and limit.
 
-The fresh run used isolated listeners and a synthetic downstream responder. It
-did not modify public service configuration or exercise external inference.
-The verifier wheel, server binary and local container image were recorded by
-hash; Safari runtime, independent reproduction and public deployment promotion
-remain open. The manual GENXT stage endorsement is explicitly pinned; normal
-GENXT Actions OIDC publication remains blocked by its required CI job. Previous
-Milan archives and the 1068-kernel checkpoint remain historical evidence in
-Git history, not current live acceptance.
+The isolated run used a synthetic downstream responder. Its 45 IMA entries
+cover a boot aggregate and 44 kernel modules, not application, model or GPU
+state. Public deployment, external inference, Safari runtime and independent
+reproduction remain untested. The manual GENXT stage endorsement is pinned;
+the automated Actions OIDC path remains pending. See the
+[reference registry record](revision/reference-registry-stage.md) and
+[independent rerun checklist](revision/rerun.md).
 
-The old `revision/0.2`/`backup/pre-jan-consolidation-20261123` tip was audited
-before removal. Its 14 unique commits hold an earlier API, discovery/ServiceInfo
-flow and test harness; merging it would restore retired behavior. Its report,
-review, run and checkpoint records already exist byte-for-byte at the current
-line's `9ecade8` ancestor. Reusable SNP/HCL/quote/PCR/IMA and origin checks have
-current equivalents in the verifier, replay suite and application transport.
-The active replay harness was corrected to mutate actual v2 archive inputs;
-the old top-level mutations were ineffective on current archives. Its v1
-migration path also passed the same 27 cases on a v1-shaped copy of the fresh
-Genoa bundle.
+The removed `revision/0.2` / `backup/pre-jan-consolidation-20261123` line was
+audited before removal. Its 14 unique commits used an earlier API and
+discovery/ServiceInfo flow; merging the line would restore retired behavior.
+Its report, review and checkpoint records remain reachable at `9ecade8`.
+Reusable SNP/HCL/quote/PCR/IMA and origin checks have current equivalents.
+The active replay harness was corrected to mutate actual schema-v2 archive
+inputs; its v1 adapter passed the same 27 cases on a v1-shaped Genoa bundle.
 
-Before checkpoint R: review release packaging/attribution and obtain independent acceptance if
-required for publication. Then record R and extract Attestor with shared
-history. GitHub issue/PR, pushes, tags and package publication remain
-outstanding. Historical reports under `docs/revision/` and `docs/design/`
-retain their original version labels and do not certify this combined tree.
+Before checkpoint R, review release packaging and attribution, and obtain
+independent acceptance if required for publication. Then record R and extract
+Attestor with shared history. GitHub issue/PR, pushes, tags and package
+publication remain outstanding. Earlier design and validation records remain
+in Git history at `1b33d6e`; their original version labels do not certify this
+combined tree.
 
 ## Later execution trust work
 

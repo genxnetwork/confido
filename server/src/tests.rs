@@ -2,7 +2,10 @@ use super::*;
 
 #[test]
 fn reads_ima_order_and_digest_metadata() {
-    let log = "10 abc ima-ng sha256:def boot_aggregate\n10 123 ima-ng sha256:456 /lib/modules/6.8.0/kernel/example.ko\n";
+    let log = concat!(
+        "10 abc ima-ng sha256:def boot_aggregate\n",
+        "10 123 ima-ng sha256:456 /lib/modules/6.8.0/kernel/example.ko\n"
+    );
     let entries = Attester::parse_ima_measurements(log.as_bytes()).unwrap();
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[0].name, "boot_aggregate");

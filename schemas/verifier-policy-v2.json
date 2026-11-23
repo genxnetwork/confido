@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "verifier-policy-v2",
+  "description": "Caller-selected platform requirements and immutable reference pin consumed by the Confido evidence verifier.",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -14,9 +15,11 @@
       ]
     },
     "platform": {
+      "description": "Locally enrolled AMD product, root, launch measurement, and minimum TCB requirements.",
       "type": "object",
       "properties": {
         "product": {
+          "description": "Supported AMD product selected by the local policy and checked against authenticated evidence.",
           "enum": [
             "Milan",
             "Genoa"
@@ -50,6 +53,7 @@
       "additionalProperties": false
     },
     "reference": {
+      "description": "Exact repository, commit, path, and SHA-256 pin for the reference bytes; publisher approval is a separate caller decision.",
       "type": "object",
       "properties": {
         "repository": {
