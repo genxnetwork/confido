@@ -40,7 +40,19 @@ def main():
     parser.add_argument('--sidecar',type=Path,required=True)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--container',help='Also exercise this frozen client image')
+    parser.add_argument('--match-verifier-policy',type=Path,default=ROOT/'profiles/verifier-match.json')
+    parser.add_argument('--mismatch-verifier-policy',type=Path,default=ROOT/'profiles/verifier-mismatch.json')
     args=parser.parse_args()
+    verifier_policy_paths={'match':args.match_verifier_policy,'mismatch':args.mismatch_verifier_policy}
+    verifier_policy_bytes={name:path.read_bytes() for name,path in verifier_policy_paths.items()}
+    verifier_policies={name:json.loads(data) for name,data in verifier_policy_bytes.items()}
+    for name,policy in verifier_policies.items():
+        if policy.get('schema_version')!=2 or policy.get('profile')!='azure-snp-vtpm-ima/1':
+            raise ValueError(f'Invalid {name} verifier policy')
+    if verifier_policies['match']['platform']!=verifier_policies['mismatch']['platform']:
+        raise ValueError('Stage policies must use the same platform enrollment')
+    if verifier_policies['match']['reference']==verifier_policies['mismatch']['reference']:
+        raise ValueError('Stage policies must use different references')
     args.out.mkdir(mode=0o700,parents=True,exist_ok=False)
     stage=args.out.resolve()
     for port in [18001,18082,18083,19091,19092,18443,18444,14000]:
@@ -78,7 +90,7 @@ def main():
             wait_port(port,sidecar)
             policy=json.loads((ROOT/'profiles'/f'{name}.json').read_text());policy['origin']=f'https://localhost:{tls_port}'
             (policies/f'{name}.json').write_text(json.dumps(policy,indent=2))
-            (policies/policy['verifier_policy']).write_bytes((ROOT/'profiles'/policy['verifier_policy']).read_bytes())
+            (policies/policy['verifier_policy']).write_bytes(verifier_policy_bytes[name])
         nginx='''worker_processes 1;
 pid PATH/nginx.pid;
 error_log PATH/nginx-error.log;

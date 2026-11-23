@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "registry_repository": "teraveri/attestation-references",
+  "issuers": [
+    {
+      "name": "GENXT",
+      "repository": "genxnetwork/confido-trusted-repository",
+      "workflow": "genxnetwork/confido-trusted-repository/.github/workflows/endorse-manifest.yml",
+      "source_ref": "refs/heads/master",
+      "predicate_type": "https://teraveri.org/attestations/reference-manifest-publisher/v1",
+      "claim": "published-reference-manifest",
+      "profiles": ["azure-snp-vtpm-ima/1"],
+      "review_statuses": ["stage-candidate", "stage-approved"]
+    }
+  ]
+}
