@@ -1,7 +1,10 @@
 MATURIN ?= maturin
 PYTHON ?= python3
-.PHONY: wheel install
-wheel:
-	$(MATURIN) build --locked --release --interpreter $(PYTHON) --out dist
+PROFILE ?= release
+.PHONY: wheel install licenses
+licenses:
+	$(PYTHON) ../../scripts/prepare_attribution.py Cargo.toml licenses
+wheel: licenses
+	$(MATURIN) build --locked --profile $(PROFILE) --interpreter $(PYTHON) --out dist
 install: wheel
-	$(PYTHON) -m pip install --force-reinstall --no-index --no-deps dist/confido_verifier-0.4.0-*.whl
+	$(PYTHON) -m pip install --force-reinstall --no-index --no-deps dist/confido_verifier-0.2.0-*.whl

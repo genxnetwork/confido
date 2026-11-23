@@ -2,7 +2,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, revision/attestation-update]
 permissions:
   contents: read
 jobs:

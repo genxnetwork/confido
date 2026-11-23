@@ -5,6 +5,7 @@ Usage: cargo metadata --locked --format-version 1 ... > metadata.json
 """
 
 import io
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -13,7 +14,9 @@ import tarfile
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PROJECT_CRATES = {PROJECT_ROOT / name for name in ("lib", "client", "server")}
+PROJECT_CRATES = {PROJECT_ROOT / name for name in (
+    "lib", "client", "server", "protocol", "bindings/python", "bindings/wasm"
+)}
 ATTRIBUTION_PREFIXES = ("license", "licence", "copying", "copyright", "notice", "authors")
 
 
@@ -79,7 +82,23 @@ def collect(metadata, output):
                     ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
                 ).strip()
         if not candidates:
-            raise ValueError(f"No attribution files found for {package['id']}; review required")
+            supplement = PROJECT_ROOT / "third_party" / f"{package['name']}-{package['version']}"
+            provenance = supplement / "provenance.json"
+            if provenance.is_file():
+                record = json.loads(provenance.read_text())
+                vcs = crate_root / ".cargo_vcs_info.json"
+                if (record["crate"] != package["name"] or record["version"] != package["version"]
+                        or not vcs.is_file()
+                        or json.loads(vcs.read_text())["git"]["sha1"] != record["commit"]):
+                    raise ValueError(f"Attribution provenance differs for {package['id']}")
+                for item in record["files"]:
+                    path = supplement / item["file"]
+                    if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
+                        raise ValueError(f"Attribution digest differs: {path}")
+                    candidates[path] = Path("preserved-upstream") / path.name
+                candidates[provenance] = Path("preserved-upstream/provenance.json")
+            if not candidates:
+                raise ValueError(f"No attribution files found for {package['id']}; review required")
         paths = []
         for path, relative in sorted(candidates.items()):
             name = f"third-party/{label}/{relative.as_posix()}"

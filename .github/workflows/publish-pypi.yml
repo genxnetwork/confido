@@ -119,7 +119,7 @@ jobs:
               'protocol_version': '1',
               'metadata_version': '2.1',
               'name': 'confido-verifier',
-              'version': '0.4.0',
+              'version': '0.2.0',
               'summary': 'Credential connectivity check',
               'filetype': 'bdist_wheel',
               'pyversion': 'cp310',

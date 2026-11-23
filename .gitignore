@@ -25,3 +25,4 @@ server/nvtrust
 # Generated verifier bindings and browser packages
 **/dist/
 **/pkg/
+bindings/python/licenses/
