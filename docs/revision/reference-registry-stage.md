@@ -14,6 +14,37 @@ manifest means GENXT recognizes the manifest; it does not certify the VM image,
 application, GPU, or model. Rebuilds and kernel changes need new measurements
 and a new entry rather than changing a pinned reference.
 
+## Temporary manual stage path
+
+GENXT Actions cannot currently start its required `test` job. For the urgent
+stage, GENXT has issued a one-use Ed25519 statement from the reviewed request
+using `tools/sign_manual_endorsement.py`. The private key existed only in the
+signing process. Its public key and signed statement are in the GENXT
+`revision/reference-endorsement` branch at commit
+`66521651cb2bd56739cb4717af8ff149e7e1ccc7`. The registry holds a copy at
+`endorsements/genxt-manual.ed25519.json`. JAN's local issuer policy explicitly
+pins that key, this one manifest path and its SHA-256, and stage-candidate
+status. This manual signature provides exact-file integrity under that
+locally accepted key; it does not have the GitHub Actions OIDC provenance of
+the normal path below. The GENXT `master` rule still requires `test`.
+
+After the bundle is merged to the registry, enroll using its full commit:
+
+```bash
+python3 scripts/enroll_reference.py \
+  --registry teraveri/reference-value-registry \
+  --commit FULL_REGISTRY_COMMIT_WITH_MANUAL_BUNDLE \
+  --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
+  --issuer GENXT-manual \
+  --registry-dir ../reference-value-registry \
+  --output profiles/verifier-genoa-stage-registry.json
+```
+
+`--registry-dir` requires a clean checkout at that exact commit. Python's
+`cryptography` package verifies the Ed25519 signature. When GENXT Actions
+become available, follow the OIDC publication sequence below and replace the
+manual issuer decision in a new JAN policy review.
+
 ## Publication sequence
 
 1. The public registry `teraveri/reference-value-registry` is initialized at

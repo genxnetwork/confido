@@ -5,6 +5,8 @@ The issuer policy is a local verifier-owner input. Registry contents are data,
 never executable configuration or an authority list.
 """
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -20,6 +22,7 @@ HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 SAFE = re.compile(r"[A-Za-z0-9_.-]+\Z")
 MAX_FILE = 4 * 1024 * 1024
 PREDICATE_TYPE = "https://teraveri.org/attestations/reference-manifest-publisher/v1"
+STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 
 
 def no_duplicate_keys(pairs):
@@ -146,6 +149,53 @@ def verify_bundle(manifest_bytes, bundle_bytes, issuer, registry, manifest_path,
     raise ValueError("signed subject or publisher claim mismatch")
 
 
+def verify_manual_bundle(manifest_bytes, bundle_bytes, issuer, registry, manifest_path):
+    """Verify the explicitly pinned, one-use GENXT stage key and exact claim."""
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    if issuer.get("method") != "ed25519-stage" or issuer.get("predicate_type") != PREDICATE_TYPE:
+        raise ValueError("unsupported manual issuer")
+    if issuer.get("claim") != "published-reference-manifest" or issuer.get("publisher") != "GENXT":
+        raise ValueError("unsupported manual issuer claim")
+    if not repository_name(issuer.get("repository")):
+        raise ValueError("invalid manual issuer repository")
+    try:
+        public_key = base64.b64decode(issuer["public_key"], validate=True)
+    except (KeyError, ValueError, TypeError, binascii.Error) as exc:
+        raise ValueError("invalid pinned public key") from exc
+    if len(public_key) != 32 or hashlib.sha256(public_key).hexdigest() != issuer.get("public_key_sha256"):
+        raise ValueError("pinned public key digest mismatch")
+    bundle = parse_json(bundle_bytes)
+    if not isinstance(bundle, dict) or set(bundle) != {"schema_version", "algorithm", "key_id", "statement", "signature"}:
+        raise ValueError("invalid manual endorsement bundle")
+    if type(bundle["schema_version"]) is not int or bundle["schema_version"] != 1 or bundle["algorithm"] != "Ed25519":
+        raise ValueError("unsupported manual endorsement format")
+    if bundle["key_id"] != issuer["public_key_sha256"]:
+        raise ValueError("manual endorsement key mismatch")
+    digest = hashlib.sha256(manifest_bytes).hexdigest()
+    if issuer.get("manifest_path") != manifest_path or issuer.get("manifest_sha256") != digest:
+        raise ValueError("manual issuer is not pinned to this manifest")
+    expected_statement = {
+        "_type": STATEMENT_TYPE,
+        "subject": [{"name": f"{registry}/{manifest_path}", "digest": {"sha256": digest}}],
+        "predicateType": PREDICATE_TYPE,
+        "predicate": {"schema_version": 1, "claim": "published-reference-manifest", "publisher": "GENXT",
+                      "registry_repository": registry, "manifest_path": manifest_path, "manifest_sha256": digest},
+    }
+    if bundle["statement"] != expected_statement:
+        raise ValueError("manual signed subject or publisher claim mismatch")
+    try:
+        signature = base64.b64decode(bundle["signature"], validate=True)
+        if len(signature) != 64:
+            raise ValueError("invalid manual signature length")
+        message = json.dumps(bundle["statement"], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        Ed25519PublicKey.from_public_bytes(public_key).verify(signature, message)
+    except (InvalidSignature, ValueError, TypeError, binascii.Error) as exc:
+        raise ValueError("manual endorsement signature invalid") from exc
+    return digest
+
+
 def enroll(registry, commit, entry, issuer_policy, platform, reader, gh, issuer_name="GENXT"):
     if not repository_name(registry) or not isinstance(commit, str) or not HEX40.fullmatch(commit):
         raise ValueError("invalid registry commit")
@@ -161,7 +211,11 @@ def enroll(registry, commit, entry, issuer_policy, platform, reader, gh, issuer_
     issuer = matches[0]
     manifest_path = f"{entry}/manifest.json"
     reference_path = f"{entry}/reference.json"
-    bundle_path = f"{entry}/endorsements/{issuer_name.lower()}.sigstore.json"
+    method = issuer.get("method", "github-actions")
+    if method not in ("github-actions", "ed25519-stage"):
+        raise ValueError("unsupported issuer method")
+    bundle_ext = "ed25519.json" if method == "ed25519-stage" else "sigstore.json"
+    bundle_path = f"{entry}/endorsements/{issuer_name.lower()}.{bundle_ext}"
     manifest_bytes = reader(manifest_path)
     reference_bytes = reader(reference_path)
     bundle_bytes = reader(bundle_path)
@@ -170,7 +224,10 @@ def enroll(registry, commit, entry, issuer_policy, platform, reader, gh, issuer_
         raise ValueError("issuer is not authorized for this reference scope")
     if m["environment"]["product"] != platform["product"]:
         raise ValueError("platform product and manifest differ")
-    verify_bundle(manifest_bytes, bundle_bytes, issuer, registry, manifest_path, gh)
+    if method == "ed25519-stage":
+        verify_manual_bundle(manifest_bytes, bundle_bytes, issuer, registry, manifest_path)
+    else:
+        verify_bundle(manifest_bytes, bundle_bytes, issuer, registry, manifest_path, gh)
     if set(platform) != {"product", "ark_sha256", "minimum_tcb", "launch_measurement"}:
         raise ValueError("invalid local platform policy")
     if not HEX64.fullmatch(platform["ark_sha256"]) or not re.fullmatch(r"[0-9a-f]{96}", platform["launch_measurement"]):

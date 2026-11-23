@@ -1,9 +1,14 @@
+import base64
+import copy
 import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 import enroll_reference as er
 
@@ -46,6 +51,33 @@ class EnrollmentTests(unittest.TestCase):
                          "digest": {"sha256": digest}}],
             "predicate": predicate or expected}}}]
         return SimpleNamespace(stdout=json.dumps(record))
+
+    def manual_bundle(self):
+        policy = copy.deepcopy(self.issuer_policy)
+        issuer = next(i for i in policy["issuers"] if i["name"] == "GENXT-manual")
+        key = Ed25519PrivateKey.generate()
+        public = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+        key_id = hashlib.sha256(public).hexdigest()
+        issuer["public_key"] = base64.b64encode(public).decode()
+        issuer["public_key_sha256"] = key_id
+        digest = hashlib.sha256(self.manifest).hexdigest()
+        issuer["manifest_path"] = self.manifest_path
+        issuer["manifest_sha256"] = digest
+        statement = {
+            "_type": er.STATEMENT_TYPE,
+            "subject": [{"name": f"teraveri/reference-value-registry/{self.manifest_path}",
+                         "digest": {"sha256": digest}}],
+            "predicateType": er.PREDICATE_TYPE,
+            "predicate": {"schema_version": 1, "claim": "published-reference-manifest", "publisher": "GENXT",
+                          "registry_repository": "teraveri/reference-value-registry",
+                          "manifest_path": self.manifest_path, "manifest_sha256": digest},
+        }
+        message = json.dumps(statement, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        bundle = {"schema_version": 1, "algorithm": "Ed25519", "key_id": key_id,
+                  "statement": statement, "signature": base64.b64encode(key.sign(message)).decode()}
+        path = f"{ENTRY}/endorsements/genxt-manual.ed25519.json"
+        self.objects[path] = json.dumps(bundle).encode()
+        return policy, bundle, path
 
     @patch("enroll_reference.subprocess.run")
     def test_enrolls_only_verified_publisher_statement(self, run):
@@ -92,6 +124,36 @@ class EnrollmentTests(unittest.TestCase):
         negative = json.loads((ROOT / "profiles/verifier-genoa-stage-mismatch.json").read_text())
         self.assertEqual(negative["platform"], self.platform)
         self.assertNotEqual(negative["reference"]["sha256"], hashlib.sha256(self.reference).hexdigest())
+
+    def test_manual_stage_key_verifies_exact_manifest(self):
+        policy, _, _ = self.manual_bundle()
+        enrolled = er.enroll("teraveri/reference-value-registry", COMMIT, ENTRY,
+                             policy, self.platform, self.reader, "unused", "GENXT-manual")
+        self.assertEqual(enrolled["reference"]["sha256"], hashlib.sha256(self.reference).hexdigest())
+
+    def test_manual_stage_key_rejects_modified_claim(self):
+        policy, bundle, path = self.manual_bundle()
+        bundle["statement"]["predicate"]["publisher"] = "other"
+        self.objects[path] = json.dumps(bundle).encode()
+        with self.assertRaisesRegex(ValueError, "manual signed subject or publisher claim mismatch"):
+            er.enroll("teraveri/reference-value-registry", COMMIT, ENTRY,
+                      policy, self.platform, self.reader, "unused", "GENXT-manual")
+
+    def test_manual_stage_key_rejects_modified_signature(self):
+        policy, bundle, path = self.manual_bundle()
+        bundle["signature"] = base64.b64encode(b"0" * 64).decode()
+        self.objects[path] = json.dumps(bundle).encode()
+        with self.assertRaisesRegex(ValueError, "manual endorsement signature invalid"):
+            er.enroll("teraveri/reference-value-registry", COMMIT, ENTRY,
+                      policy, self.platform, self.reader, "unused", "GENXT-manual")
+
+    def test_manual_stage_key_rejects_unpinned_manifest(self):
+        policy, _, _ = self.manual_bundle()
+        issuer = next(i for i in policy["issuers"] if i["name"] == "GENXT-manual")
+        issuer["manifest_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "manual issuer is not pinned to this manifest"):
+            er.enroll("teraveri/reference-value-registry", COMMIT, ENTRY,
+                      policy, self.platform, self.reader, "unused", "GENXT-manual")
 
 
 if __name__ == "__main__":
