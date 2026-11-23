@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Isolated hardware-backed acceptance run. Never replaces public listeners.
-Requires local 0.3.0 wheel, built server/sidecar, Nginx and access to the TPM.
+Requires local 0.4.0 verifier and transport wheels, built server/sidecar, Nginx and access to the TPM.
 The downstream chat responder is explicitly synthetic: no external inference.
 """
 import argparse
@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import sys
 import subprocess
 import threading
 import time
@@ -76,6 +77,7 @@ def main():
             wait_port(port,sidecar)
             policy=json.loads((ROOT/'profiles'/f'{name}.json').read_text());policy['origin']=f'https://localhost:{tls_port}'
             (policies/f'{name}.json').write_text(json.dumps(policy,indent=2))
+            (policies/policy['verifier_policy']).write_bytes((ROOT/'profiles'/policy['verifier_policy']).read_bytes())
         nginx='''worker_processes 1;
 pid PATH/nginx.pid;
 error_log PATH/nginx-error.log;
@@ -104,9 +106,18 @@ http {
         os.environ['CONFIDO_POLICY_DIR']=str(policies);os.environ['CONFIDO_RUN_DIR']=str(stage/'runs')
         # Sentinel credentials only, never production credentials/provider keys.
         os.environ['CONFIDO_USERNAME']='stage-only';os.environ['CONFIDO_PASSWORD']='stage-only-sentinel'
-        spec=importlib.util.spec_from_file_location('demo',ROOT.parent/'confidential-ai-example/confai-promter.py')
+        sys.path.insert(0,str(ROOT.parent/'confidential-ai-example'))
+        spec=importlib.util.spec_from_file_location('chat_demo',ROOT.parent/'confidential-ai-example/confai-promter.py')
         demo=importlib.util.module_from_spec(spec);spec.loader.exec_module(demo)
-        import confido
+        from demo import collection, admission
+        def connect(policy, preview, path):
+            run=collection.collect_and_verify(policy,preview)
+            result, archive=run.result, run.archive
+            assert result["status"] == "verified", "Transport case must start with verified evidence"
+            admission.save_private(path,archive)
+            session=admission.authenticate(policy,preview,result,run=run)
+            run.consume(policy,result)
+            return session
         for name,expected in [('match',True),('mismatch',False)]:
             before=len(captures)
             with patch('builtins.input',return_value=''):
@@ -121,9 +132,8 @@ http {
             assert observed==int(expected)
             results.append({'id':f'installed_wheel_{name}','expected_admitted':expected,'observed_admitted':client is not None,'application_requests':observed})
         # A shared certificate cannot transfer admission to another origin.
-        policy=json.loads((policies/'match.json').read_text());preview=confido.discover_py(json.dumps(policy))
-        admitted=confido.connect_py(json.dumps(policy),preview,str(stage/'scope-test.json'))
-        assert json.loads(admitted.result_json)['application_admitted']
+        policy=collection.load_policy(policies/'match.json');preview=collection.discover(policy)
+        admitted=connect(policy,preview,stage/'scope-test.json')
         before=len(captures)
         for origin in ['https://localhost:18444','http://localhost:18443','https://127.0.0.1:18443']:
             try: admitted.request('POST',origin+'/v1/chat/completions',[('authorization','stage-only-sentinel')],b'{}')
@@ -133,18 +143,22 @@ http {
         results.append({'id':'origin_scope_shared_certificate','rejected_targets':3,'application_requests':0})
         # Fresh real evidence is insufficient when the TLS name is wrong.
         bad=dict(policy,origin='https://127.0.0.1:18443')
-        wrong=confido.connect_py(json.dumps(bad),confido.discover_py(json.dumps(bad)),str(stage/'wrong-host.json'))
-        r=json.loads(wrong.result_json);assert r['reason']=='https_authentication_failed' and not r['application_admitted']
+        try: connect(bad,collection.discover(bad),stage/'wrong-host.json')
+        except (RuntimeError,ValueError): pass
+        else: raise AssertionError('Wrong TLS hostname admitted')
+        r={'reason':'https_authentication_failed'}
         results.append({'id':'wrong_tls_hostname','observed':r['reason'],'application_requests':0})
         # Hot-reloaded service identity must not replace the verifier's identity.
-        original=confido.discover_py(json.dumps(policy))
+        original=collection.discover(policy)
         configfile=stage/'match.yaml';text=configfile.read_text();configfile.write_text(text.replace('attestation-match.genxt.demo-chat','changed-service-id'))
         for _ in range(30):
             info=json.load(urllib.request.urlopen('http://127.0.0.1:18082/service-info',timeout=2))
             if info['id']=='changed-service-id': break
             time.sleep(.1)
-        changed=confido.connect_py(json.dumps(policy),original,str(stage/'changed-metadata.json'))
-        r=json.loads(changed.result_json);assert not r['application_admitted'] and r['reason']=='https_authentication_failed'
+        try: connect(policy,original,stage/'changed-metadata.json')
+        except (RuntimeError,ValueError): pass
+        else: raise AssertionError('Changed identity admitted')
+        r={'reason':'https_authentication_failed'}
         results.append({'id':'changed_metadata','observed':r['reason'],'application_requests':0})
         configfile.write_text(text)
         for _ in range(30):

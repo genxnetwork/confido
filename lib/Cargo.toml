@@ -1,36 +1,16 @@
 [package]
-name = "confido"
-version = "0.3.0"
-edition = "2021"
 license = "Apache-2.0"
-
-[lib]
 name = "confido"
-path = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]
-
-
+version = "0.4.0"
+edition = "2021"
+description = "Deterministic local evidence verification"
 [dependencies]
-az-snp-vtpm = { git = "https://github.com/kinvolk/azure-cvm-tooling", rev = "9c6bff6c959994da280f8b3b5bad62a1600063d0", features = ["verifier"] }
+confido-protocol = { path = "../protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.13"
+hex = "0.4"
+ring = { version = "0.17.14", default-features = false, features = ["alloc"] }
+x509-parser = { version = "=0.16.0", features = ["verify"] }
+[dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-rand = "0.8.4"
-base64 = "0.13.0"
-env_logger = "0.8"
-log = "0.4"
-reqwest = { version = "0.11", features = ["json", "native-tls", "rustls-tls-manual-roots"] }
-rustls = { version = "0.21", features = ["dangerous_configuration"] }
-httpdate = "1"
-pyo3 = { version = "0.20.0", optional = true, features = ["extension-module"] }
-tokio = { version = "1", features = ["full"] }
-hex = "0.4.3"
-ring = "0.17.8"
-anyhow = "1.0"
-tss-esapi = "7.7"
-
-x509-parser = "=0.16.0"
-
-[features]
-default = []
-python = ["dep:pyo3"]

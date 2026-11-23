@@ -17,10 +17,14 @@ def main():
     parser.add_argument("--online", action="store_true")
     parser.add_argument("--flint", type=Path, default=ROOT.parent / "flint")
     args = parser.parse_args()
-    import confido
-    if getattr(confido, "__version__", None) != "0.3.0":
-        raise SystemExit("FAIL: stale wheel; expected Confido 0.3.0")
-    print("PASS: installed Confido 0.3.0")
+    import confido_verifier
+    if getattr(confido_verifier, "__version__", None) != "0.4.0":
+        raise SystemExit("FAIL: stale wheel; expected Confido 0.4.0")
+    print("PASS: installed Confido 0.4.0")
+    fixture = ROOT / "protocol/fixtures/tee-report-advertisement-v1.json"
+    sidecar_fixture = ROOT.parent / "ga4gh_service_info_sidecar_gsoc_2026/internal/handler/testdata/tee-report-advertisement-v1.json"
+    if sidecar_fixture.exists() and fixture.read_bytes() != sidecar_fixture.read_bytes():
+        raise SystemExit("FAIL: sidecar/protocol wire fixture drift")
     canonical = (args.flint / "nginx/flint.conf").read_bytes()
     for relative in ["server/conf/nginx.conf", "server/deployment/nginx-confido.conf"]:
         if (ROOT / relative).read_bytes() != canonical:
@@ -32,14 +36,14 @@ def main():
     if args.online:
         if not args.policy:
             parser.error("--online requires --policy")
-        policy = json.loads(args.policy.read_text())
-        preview = confido.discover_py(json.dumps(policy))
-        # This also authenticates the exact hostname and critical metadata.
-        session = confido.connect_py(json.dumps(policy), preview)
-        result = json.loads(session.result_json)
+        import sys
+        sys.path.insert(0, str(ROOT.parent / "confidential-ai-example"))
+        from demo import collection, admission
+        policy = collection.load_policy(args.policy)
+        preview = collection.discover(policy)
+        result, _ = collection.collect_and_verify(policy, preview)
+        session = admission.authenticate(policy, preview, result)
         print(json.dumps(result, indent=2))
-        if not result["application_admitted"]:
-            raise SystemExit("FAIL: appraisal/HTTPS preflight withheld admission")
         for path, expected in [("/aTLS", 404)]:
             status, _, _ = session.request("GET", policy["origin"] + path, [], b"")
             if status != expected:

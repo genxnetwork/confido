@@ -1,12 +1,8 @@
-use crate::atls::{IMALogEntry, ModuleLoadOrder};
 use crate::pcr::Pcr;
-use crate::vtpm;
-use log::{debug, error, info};
-use reqwest::Url;
+use confido_protocol as vtpm;
+use confido_protocol::{IMALogEntry, ModuleLoadOrder};
+
 use serde::{Deserialize, Serialize};
-use std::env;
-use std::net::IpAddr;
-use tokio::net::lookup_host;
 
 #[derive(Serialize, Deserialize)]
 pub struct TRS {
@@ -16,6 +12,7 @@ pub struct TRS {
 }
 
 #[cfg(test)]
+#[path = "reference_tests.rs"]
 mod tests;
 
 impl TRS {
@@ -32,78 +29,32 @@ impl TRS {
             self.ima_measurements.iter().zip(actual.iter()).enumerate()
         {
             if trusted != observed {
-                if trusted.name != observed.name {
-                    mismatches.push(format!(
-                        "index {} name trusted={} actual={}",
-                        index, trusted.name, observed.name
-                    ));
-                } else {
-                    mismatches.push(format!(
-                        "index {} module {} digest differs",
-                        index, trusted.name
-                    ));
-                }
+                let expected = serde_json::to_value(trusted).expect("IMA entries serialize");
+                let actual = serde_json::to_value(observed).expect("IMA entries serialize");
+                let field = [
+                    "name",
+                    "PCR",
+                    "ima_template",
+                    "filedata_alg",
+                    "filedata_hash",
+                    "template_hash",
+                    "filename_hint",
+                ]
+                .into_iter()
+                .find(|field| expected[field] != actual[field])
+                .unwrap_or("entry");
+                let short = |value: &serde_json::Value| {
+                    value.to_string().chars().take(120).collect::<String>()
+                };
+                mismatches.push(format!(
+                    "index {index} ({}) {field}: expected={} observed={}",
+                    observed.name.chars().take(80).collect::<String>(),
+                    short(&expected[field]),
+                    short(&actual[field])
+                ));
             }
         }
         mismatches
-    }
-
-    pub async fn get(url: &str, trs_registry: &str) -> Result<TRS, Box<dyn std::error::Error>> {
-        let url = Url::parse(url)?;
-        let host = url.host_str().ok_or("TRS URL has no host")?;
-        let trs_host = if host == "127.0.0.1" || host == "localhost" {
-            let public_ip = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(30))
-                .build()?
-                .get("https://api.ipify.org")
-                .send()
-                .await?
-                .error_for_status()?
-                .text()
-                .await?;
-            info!("Resolved {} through ipify to {}", host, public_ip);
-            public_ip.trim().parse::<IpAddr>()?.to_string()
-        } else if host.parse::<IpAddr>().is_ok() {
-            host.to_string()
-        } else {
-            let port = url.port_or_known_default().ok_or("TRS URL has no port")?;
-            let address = lookup_host((host, port))
-                .await?
-                .next()
-                .ok_or("TRS host did not resolve")?;
-            info!("Resolved {} to {}", host, address.ip());
-            address.ip().to_string()
-        };
-        info!("Fetching TRS for {}", trs_host);
-
-        // Try to use GitHub token if available, otherwise skip authentication
-        let url = format!(
-            "https://api.github.com/repos/{}/contents/bb-attest-{}.json",
-            trs_registry, trs_host
-        )
-        .to_string();
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()?;
-
-        let request = client
-            .get(&url)
-            .header("Accept", "application/vnd.github.raw+json")
-            .header("User-Agent", "confido");
-
-        // Only add auth if token file exists
-        let request = if let Ok(pat) = std::fs::read_to_string(format!(
-            "{}/.confido/trs.token",
-            env::var("HOME").unwrap_or_else(|_| ".".to_string())
-        )) {
-            request.bearer_auth(pat.trim())
-        } else {
-            request
-        };
-
-        let data = request.send().await?.error_for_status()?.text().await?;
-        let trs: TRS = serde_json::from_str(&data)?;
-        Ok(trs)
     }
 
     pub fn get_boot_aggregate_hash(&self) -> Result<String, &'static str> {
@@ -112,18 +63,7 @@ impl TRS {
             .iter()
             .find(|&measurement| measurement.filename_hint == "boot_aggregate");
         match entry {
-            Some(measurement) => {
-                info!("TRS ima-template: {}", measurement.ima_template);
-                debug!(
-                    "TRS boot_aggregate template_hash: {}",
-                    measurement.template_hash
-                );
-                debug!(
-                    "TRS boot_aggregate filedata_hash: {}",
-                    measurement.filedata_hash
-                );
-                Ok(measurement.filedata_hash.clone())
-            }
+            Some(measurement) => Ok(measurement.filedata_hash.clone()),
             None => Err("No entry found with filename_hint = 'boot_aggregate'"),
         }
     }
@@ -195,6 +135,25 @@ impl TRS {
         Ok((algo, pcr.value))
     }
 
+    pub fn verify_boot_aggregate(&self, quote: &vtpm::Quote) -> Result<vtpm::Algorithm, String> {
+        let algo = self.boot_aggregate_algorithm()?;
+        let bank = quote.get_pcr_bank(algo).ok_or("Missing trusted PCR bank")?;
+        let max = if algo == vtpm::Algorithm::Sha1 { 8 } else { 10 };
+        let mut d = ring::digest::Context::new(algo.digest());
+        for j in 0..max {
+            let value = bank.pcr_values.get(j).ok_or("Missing boot aggregate PCR")?;
+            if value.len() != algo.length() {
+                return Err("Invalid PCR length".into());
+            }
+            d.update(value);
+        }
+        if hex::encode(d.finish().as_ref()) != self.get_boot_aggregate_hash()?.to_ascii_lowercase()
+        {
+            return Err("Boot aggregate mismatch".into());
+        }
+        Ok(algo)
+    }
+
     pub fn verify_pcr10(
         &self,
         module_load_order: &ModuleLoadOrder,
@@ -219,14 +178,8 @@ impl TRS {
             self.ima_calculate(module_load_order, algo)?.1
         };
         if expected != actual {
-            error!(
-                "PCR 10 mismatch: expected={}, actual={}",
-                hex::encode(expected),
-                hex::encode(actual)
-            );
             return Err("PCR 10 mismatch");
         }
-        info!("PCR 10 matches");
         Ok(())
     }
 }

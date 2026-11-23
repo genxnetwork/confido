@@ -1,11 +1,9 @@
-mod docker_utils;
-mod dmesg;
-use docker_utils::get_running_containers;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use confido::atls::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
-use confido::evidence::Evidence;
-use confido::nonce::Nonce;
-use confido::vtpm;
+use collector as vtpm;
+use confido_protocol::Evidence;
+use confido_protocol::Nonce;
+use confido_protocol::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
+mod collector;
 use log::{debug, error, info};
 use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
@@ -13,7 +11,9 @@ use openssl::nid::Nid;
 use openssl::pkey::PKey;
 use openssl::pkey::Private;
 use openssl::rsa::Rsa;
-use openssl::x509::extension::SubjectAlternativeName;
+use openssl::x509::extension::{
+    BasicConstraints, ExtendedKeyUsage, KeyUsage, SubjectAlternativeName,
+};
 use openssl::x509::X509NameBuilder;
 use openssl::x509::X509;
 use std::error::Error;
@@ -119,14 +119,14 @@ impl Attester {
                 let measurements = Self::read_ima_measurements()?;
                 let binding = Evidence::ima_binding(&measurements)?;
                 let mut quote_nonce = nonce.clone();
-                quote_nonce.extend_binding(certificate, &binding);
+                quote_nonce.extend_binding(&certificate.to_der()?, &binding);
                 let quote = vtpm::get_quote(quote_nonce.as_bytes(), algorithms.to_vec())?;
                 let order = Self::module_load_order(&measurements);
                 let evidence =
                     Evidence::new(report, quote, serde_json::Value::Null, order, measurements);
                 // TPM quote and PCR read are separate commands. Verify their
                 // signed digest and selection before returning a snapshot.
-                evidence.verify_quote_snapshot(nonce, certificate)?;
+                confido::verify_snapshot(&evidence, nonce.as_bytes(), &certificate.to_der()?)?;
                 if evidence.ima_measurements != Self::read_ima_measurements()? {
                     return Err("IMA changed during quote collection".into());
                 }
@@ -161,12 +161,11 @@ async fn atls_http_route(
         Err(_) => return HttpResponse::ServiceUnavailable().body("Evidence collector busy"),
     };
     let cert = Arc::clone(&certificate);
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
     let task = tokio::task::spawn_blocking(move || {
         let _permit = permit;
         Attester::gather_evidence(&nonce, &cert, algorithms).map_err(|e| e.to_string())
     });
-    let mut evidence = match tokio::time::timeout_at(deadline, task).await {
+    let evidence = match tokio::time::timeout(Duration::from_secs(20), task).await {
         Ok(Ok(Ok(evidence))) => evidence,
         other => {
             error!(
@@ -176,18 +175,6 @@ async fn atls_http_route(
             return HttpResponse::ServiceUnavailable()
                 .body("Consistent evidence snapshot unavailable");
         }
-    };
-    evidence.docker_containers = tokio::time::timeout_at(deadline, get_running_containers())
-        .await
-        .unwrap_or(serde_json::Value::Null);
-    evidence.dmesg = if data.options.dmesg {
-        tokio::time::timeout_at(deadline, tokio::task::spawn_blocking(dmesg::read))
-            .await
-            .ok()
-            .and_then(Result::ok)
-            .unwrap_or_else(|| vec!["no dmesg available".to_string()])
-    } else {
-        Vec::new()
     };
     let response = AttestationResponse {
         evidence,
@@ -200,8 +187,8 @@ async fn atls_http_route(
         Ok(value) => value,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-    response["profile"] = serde_json::json!(confido::appraisal::PROFILE);
-    response["wireVersion"] = serde_json::json!(confido::appraisal::WIRE_VERSION);
+    response["profile"] = serde_json::json!(confido_protocol::PROFILE);
+    response["wireVersion"] = serde_json::json!(confido_protocol::WIRE_VERSION);
     HttpResponse::Ok().json(response)
 }
 
@@ -233,6 +220,19 @@ fn certificate_covers_host(certificate: &X509, hostname: &str) -> bool {
     }
 }
 
+fn validate_leaf_certificate(certificate: &X509) -> Result<(), Box<dyn Error>> {
+    let der = certificate.to_der()?;
+    let (_, parsed) = x509_parser::parse_x509_certificate(&der)
+        .map_err(|e| format!("Invalid collector certificate: {e}"))?;
+    if parsed
+        .basic_constraints()?
+        .is_some_and(|constraints| constraints.value.ca)
+    {
+        return Err("Collector certificate has CA:TRUE; expected the HTTPS leaf certificate. Use the same certificate directory as Nginx (normally /etc/confido).".into());
+    }
+    Ok(())
+}
+
 fn generate_certificate(
     hostname: &str,
 ) -> Result<(X509, PKey<Private>), openssl::error::ErrorStack> {
@@ -259,6 +259,15 @@ fn generate_certificate(
     }
     let extension = san.build(&builder.x509v3_context(None, None))?;
     builder.append_extension(extension)?;
+    builder.append_extension(BasicConstraints::new().critical().build()?)?;
+    builder.append_extension(
+        KeyUsage::new()
+            .critical()
+            .digital_signature()
+            .key_encipherment()
+            .build()?,
+    )?;
+    builder.append_extension(ExtendedKeyUsage::new().server_auth().build()?)?;
 
     // Set the not_before and not_after dates for the certificate
     let not_before = Asn1Time::days_from_now(0)?;
@@ -279,9 +288,9 @@ fn generate_certificate(
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    let matches = clap::App::new("Confido aTLS Server")
+    let matches = clap::App::new("Confido Evidence Collector")
         .version(env!("CARGO_PKG_VERSION"))
-        .about("A server that generates and provides TEE-backed TLS certificates")
+        .about("Collects challenge-bound evidence with the configured HTTPS certificate")
         .arg(
             clap::Arg::new("host:port")
                 .help("Sets the host and port in the format host:port")
@@ -307,6 +316,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .long("tls-hostname")
                 .help("DNS name or IP address used by the HTTPS application")
                 .takes_value(true),
+        )
+        .arg(
+            clap::Arg::new("check-config")
+                .long("check-config")
+                .help("Prepare and validate certificate configuration without starting the server"),
         )
         .get_matches();
 
@@ -336,8 +350,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         fs::set_permissions(&private_key_path, fs::Permissions::from_mode(0o600))?;
         let private_key_pem = fs::read(&private_key_path)?;
-        let private_key = Rsa::private_key_from_pem(&private_key_pem)?;
-        let private_key = PKey::from_rsa(private_key)?;
+        let private_key = PKey::private_key_from_pem(&private_key_pem)?;
 
         let certificate_pem = std::fs::read(&certificate_path)?;
         let certificate = X509::from_pem(&certificate_pem)?;
@@ -357,6 +370,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         (certificate, private_key)
     };
 
+    validate_leaf_certificate(&certificate)?;
     if !certificate.public_key()?.public_eq(&private_key) {
         return Err("The certificate does not match the private key".into());
     }
@@ -367,6 +381,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .into());
         }
+    }
+
+    if matches.is_present("check-config") {
+        println!("Certificate configuration valid: {certificate_path}");
+        return Ok(());
     }
 
     // let fullchain_pem = fs::read(fullchain_path)?;

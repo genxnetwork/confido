@@ -21,3 +21,7 @@ server/nvtrust
 
 # Private, generated demonstration evidence and frozen runtime archives
 .artifacts/
+
+# Generated verifier bindings and browser packages
+**/dist/
+**/pkg/

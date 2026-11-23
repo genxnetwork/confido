@@ -74,6 +74,10 @@ fn creates_private_keys_with_owner_only_permissions() {
 fn generated_certificate_has_requested_subject_alternative_name() {
     for hostname in ["match.demo.genxt.network", "127.0.0.1"] {
         let (certificate, private_key) = generate_certificate(hostname).unwrap();
+        validate_leaf_certificate(&certificate).unwrap();
+        let der = certificate.to_der().unwrap();
+        let (_, parsed) = x509_parser::parse_x509_certificate(&der).unwrap();
+        assert!(!parsed.basic_constraints().unwrap().unwrap().value.ca);
         assert!(certificate_covers_host(&certificate, hostname));
         assert!(!certificate_covers_host(&certificate, "other.example"));
         assert!(certificate.public_key().unwrap().public_eq(&private_key));
@@ -117,4 +121,22 @@ async fn rejects_invalid_nonce_oversize_and_busy_before_tpm_access() {
         assert_eq!(response.status().as_u16(), expected);
         assert_eq!(response.headers().get("cache-control").unwrap(), "no-store");
     }
+}
+
+#[test]
+fn rejects_cached_ca_certificate() {
+    let (leaf, key) = generate_certificate("localhost").unwrap();
+    let mut builder = X509::builder().unwrap();
+    builder.set_version(2).unwrap();
+    builder.set_subject_name(leaf.subject_name()).unwrap();
+    builder.set_issuer_name(leaf.issuer_name()).unwrap();
+    builder.set_pubkey(&key).unwrap();
+    builder.set_not_before(leaf.not_before()).unwrap();
+    builder.set_not_after(leaf.not_after()).unwrap();
+    builder
+        .append_extension(BasicConstraints::new().critical().ca().build().unwrap())
+        .unwrap();
+    builder.sign(&key, MessageDigest::sha256()).unwrap();
+    let error = validate_leaf_certificate(&builder.build()).unwrap_err();
+    assert!(error.to_string().contains("CA:TRUE"));
 }

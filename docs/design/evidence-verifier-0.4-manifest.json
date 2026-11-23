@@ -1,0 +1,436 @@
+{
+  "schema_version": 2,
+  "captured_at": "2026-09-23T23:53:27.736045+00:00",
+  "profile": "azure-snp-vtpm-ima/1",
+  "wire_version": 1,
+  "verifier_version": "0.4.0",
+  "result_schema": 2,
+  "repositories": {
+    "confido": {
+      "base_commit": "28471a04c4af23a4765c4584757685ba56245664",
+      "dirty": true,
+      "source_sha256": "bd0c214537ac41a9e1e64a1549ddab8045397a1d1c243e599b48989f659a59ce"
+    },
+    "confidential-ai-example": {
+      "base_commit": "958a1c0f38df318f378a5c32696ac624381c9df9",
+      "dirty": true,
+      "source_sha256": "087ba46aa3722a5a3029d2062211e1ae180a4153bea49d39758be3ada398214c"
+    },
+    "ga4gh_service_info_sidecar_gsoc_2026": {
+      "base_commit": "f3db79d2b2881fee2f5e1d9f04c1770d049273fe",
+      "dirty": true,
+      "source_sha256": "9ee2bab5c40b7520b3b01de03943fb9ef87206f71a342db5f5e711df04f09260"
+    },
+    "flint": {
+      "base_commit": "cfce29793343f9926a2f9d272d558d2a30bb84ca",
+      "dirty": true,
+      "source_sha256": "e332d1f578fda8b45649582fb3c70848cd2ead0b616ac25aed3052c8f4b63e20"
+    }
+  },
+  "artifacts": {
+    "confido/bindings/python/Cargo.lock": {
+      "sha256": "4ad8bff80d769ffceee5f7e93774baac7cb8afb1e633fa4ed4a48e258020f674",
+      "bytes": 18641
+    },
+    "confido/bindings/wasm/Cargo.lock": {
+      "sha256": "74e8e5f0dfaf97be90922b564e5576272c5b579ab438d41a9729638e4325d4f4",
+      "bytes": 16023
+    },
+    "confido/client/Cargo.lock": {
+      "sha256": "b2ab341e6d51adb4e732d2795d07e227f59895c05c06dfefd64e31cd9de3a81c",
+      "bytes": 39063
+    },
+    "confido/server/Cargo.lock": {
+      "sha256": "bf0aa14c7a98b0da9a0d405984e22917c2745ac72864a7b4fbca0155b627ead0",
+      "bytes": 69779
+    },
+    "confido/lib/Cargo.lock": {
+      "sha256": "16aec248552c1a74841a77c5e23842a12b5483a74f192c81639a004db3f18f5f",
+      "bytes": 15811
+    },
+    "confidential-ai-example/native_transport/Cargo.lock": {
+      "sha256": "7da3f0b117fdf29c3b75c73fa38326fe5e4290a47a430b03bd179cdbb732ebbb",
+      "bytes": 39032
+    },
+    "confidential-ai-example/requirements.lock": {
+      "sha256": "4b07104c9df7d2d9185835b7500217dfd74146d8aa5cbafcc2746e1cfab1b3f1",
+      "bytes": 24151
+    },
+    "confidential-ai-example/build/wheels/confido_verifier-0.4.0-cp310-cp310-manylinux_2_34_x86_64.whl": {
+      "sha256": "36d6e4647092850a711f5fcca70ba78ece626cc3a51d0911b31c86177cb0b7a7",
+      "bytes": 786320
+    },
+    "confidential-ai-example/build/wheels/confai_transport-0.4.0-cp310-cp310-manylinux_2_34_x86_64.whl": {
+      "sha256": "71a715bbe06e88a616677aa8cb13dde520997f51024a37a4e8b8e55ff93c34d7",
+      "bytes": 3873061
+    },
+    "confido/extension/dist/chromium/wasm/confido_verifier_bg.wasm": {
+      "sha256": "236cd59ea9ac5cb721322e0f893d54535c7d7161b46aee3b4e68ad2035c77dee",
+      "bytes": 713687
+    },
+    "extension/chromium": {
+      "files": {
+        "background.js": "ae0f43ebe601309d4b171593351ba24f1c4ba6fe9d2966fadf90dab4c0bc3e2b",
+        "collection.js": "65f2c6dcb7aedac921185e6e7217c643cc15fbdafb2366cd6044ba36faa8919d",
+        "index.html": "afe0e5956aafd91d612849369d77a72290e794a5601eeb5df5571ee2d362462c",
+        "manifest.json": "267fcb8621c92a02e726ec132d70ca88e3c462335d33a12e3c9a23151a2f9dad",
+        "style.css": "c130db7387f6e4f5c80963e32227c445a2f77ae738c5039065c31e2ee233a9e8",
+        "ui.js": "8846a0feb0fe54b823c190299669eeacadc6914b338090c44072a1749d7be037",
+        "wasm/confido_verifier.d.ts": "a57e9de6664aa610d5a071d691086b1a650a67a91f46cab9ea2183c6bb8d83bf",
+        "wasm/confido_verifier.js": "de47bc0bcd245be4dff9de42a203b49c2ea1efd12630188d274d655ef0e0f069",
+        "wasm/confido_verifier_bg.wasm": "236cd59ea9ac5cb721322e0f893d54535c7d7161b46aee3b4e68ad2035c77dee",
+        "wasm/confido_verifier_bg.wasm.d.ts": "95ba0fac79c1fe7f5cc1fb12cb88ec3660c38fe776b024f802c1c71632929b37",
+        "worker.js": "cd9537b4cb634c8479f93c65ab401c71388ea4d52d02033fbad36345682c1f40"
+      },
+      "tree_sha256": "2df3e6431db1c4dd72509f9f52615737b3f69af91d46d7776b6144f105f90d1e"
+    },
+    "extension/firefox": {
+      "files": {
+        "background.js": "ae0f43ebe601309d4b171593351ba24f1c4ba6fe9d2966fadf90dab4c0bc3e2b",
+        "collection.js": "65f2c6dcb7aedac921185e6e7217c643cc15fbdafb2366cd6044ba36faa8919d",
+        "index.html": "afe0e5956aafd91d612849369d77a72290e794a5601eeb5df5571ee2d362462c",
+        "manifest.json": "6e7497727e77582065eb1f7cd5a38ed16520ff8ee00f3e9ba92b6f6bae1fbe4b",
+        "style.css": "c130db7387f6e4f5c80963e32227c445a2f77ae738c5039065c31e2ee233a9e8",
+        "ui.js": "8846a0feb0fe54b823c190299669eeacadc6914b338090c44072a1749d7be037",
+        "wasm/confido_verifier.d.ts": "a57e9de6664aa610d5a071d691086b1a650a67a91f46cab9ea2183c6bb8d83bf",
+        "wasm/confido_verifier.js": "de47bc0bcd245be4dff9de42a203b49c2ea1efd12630188d274d655ef0e0f069",
+        "wasm/confido_verifier_bg.wasm": "236cd59ea9ac5cb721322e0f893d54535c7d7161b46aee3b4e68ad2035c77dee",
+        "wasm/confido_verifier_bg.wasm.d.ts": "95ba0fac79c1fe7f5cc1fb12cb88ec3660c38fe776b024f802c1c71632929b37",
+        "worker.js": "cd9537b4cb634c8479f93c65ab401c71388ea4d52d02033fbad36345682c1f40"
+      },
+      "tree_sha256": "87e8bbb93a3ab7ccaaab66babb9c44e509240a4dba947a1e855fec5ef65cbc70"
+    },
+    "extension/safari": {
+      "files": {
+        "background.js": "ae0f43ebe601309d4b171593351ba24f1c4ba6fe9d2966fadf90dab4c0bc3e2b",
+        "collection.js": "65f2c6dcb7aedac921185e6e7217c643cc15fbdafb2366cd6044ba36faa8919d",
+        "index.html": "afe0e5956aafd91d612849369d77a72290e794a5601eeb5df5571ee2d362462c",
+        "manifest.json": "914b0eb03d194f6710bab1201093b033e303fcbd4884fb404039cc8e54e6d9cc",
+        "style.css": "c130db7387f6e4f5c80963e32227c445a2f77ae738c5039065c31e2ee233a9e8",
+        "ui.js": "8846a0feb0fe54b823c190299669eeacadc6914b338090c44072a1749d7be037",
+        "wasm/confido_verifier.d.ts": "a57e9de6664aa610d5a071d691086b1a650a67a91f46cab9ea2183c6bb8d83bf",
+        "wasm/confido_verifier.js": "de47bc0bcd245be4dff9de42a203b49c2ea1efd12630188d274d655ef0e0f069",
+        "wasm/confido_verifier_bg.wasm": "236cd59ea9ac5cb721322e0f893d54535c7d7161b46aee3b4e68ad2035c77dee",
+        "wasm/confido_verifier_bg.wasm.d.ts": "95ba0fac79c1fe7f5cc1fb12cb88ec3660c38fe776b024f802c1c71632929b37",
+        "worker.js": "cd9537b4cb634c8479f93c65ab401c71388ea4d52d02033fbad36345682c1f40"
+      },
+      "tree_sha256": "f62de3129fb9de7f480b63030559f1d13ccfd25714e54f8f453c02ac96c9f0dc"
+    }
+  },
+  "browser_versions": {
+    "chromium": "153.0.8010.12",
+    "firefox": "155.0"
+  },
+  "source_digest_rule": "SHA256 of sorted relative_path + NUL + file_sha256 + newline, tracked and unignored new files; excludes this manifest and validation report; includes dirty source changes.",
+  "container": {
+    "captured_at": "2026-09-23T23:51:11.141323+00:00",
+    "wheels": {
+      "confai_transport-0.4.0-cp310-cp310-manylinux_2_34_x86_64.whl": "71a715bbe06e88a616677aa8cb13dde520997f51024a37a4e8b8e55ff93c34d7",
+      "confido_verifier-0.4.0-cp310-cp310-manylinux_2_34_x86_64.whl": "36d6e4647092850a711f5fcca70ba78ece626cc3a51d0911b31c86177cb0b7a7"
+    },
+    "image": "sha256:dd403f36e892468152649bdb51e6adaadd23abea489b2d6077962aef66fb1cc3",
+    "base_image": "ubuntu:22.04@sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc",
+    "python_lock_sha256": "4b07104c9df7d2d9185835b7500217dfd74146d8aa5cbafcc2746e1cfab1b3f1",
+    "source_commit": "958a1c0f38df318f378a5c32696ac624381c9df9",
+    "source_dirty": true
+  },
+  "hardware_replay": {
+    "mode": "hardware_evidence_replay",
+    "evaluation_time": 1790178808,
+    "tests": [
+      {
+        "id": "original_hardware_evidence",
+        "expected": "reference_match",
+        "observed": "reference_match",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key",
+          "quote",
+          "reference",
+          "measurements"
+        ]
+      },
+      {
+        "id": "challenge_replay",
+        "expected": "quote_binding_invalid",
+        "observed": "quote_binding_invalid",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key"
+        ]
+      },
+      {
+        "id": "invalid_nonce",
+        "expected": "invalid_nonce",
+        "observed": "api_input_error"
+      },
+      {
+        "id": "reference_content",
+        "expected": "reference_digest_mismatch",
+        "observed": "reference_digest_mismatch",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key",
+          "quote"
+        ]
+      },
+      {
+        "id": "reference_identity",
+        "expected": "reference_match",
+        "observed": "reference_match",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key",
+          "quote",
+          "reference",
+          "measurements"
+        ]
+      },
+      {
+        "id": "origin_substitution",
+        "expected": "reference_match",
+        "observed": "reference_match",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key",
+          "quote",
+          "reference",
+          "measurements"
+        ]
+      },
+      {
+        "id": "service_identity",
+        "expected": "reference_match",
+        "observed": "reference_match",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key",
+          "quote",
+          "reference",
+          "measurements"
+        ]
+      },
+      {
+        "id": "unsupported_wire",
+        "expected": "unsupported_wire_version",
+        "observed": "unsupported_wire_version",
+        "completed_stages": []
+      },
+      {
+        "id": "untrusted_root",
+        "expected": "endorsement_chain_invalid",
+        "observed": "endorsement_chain_invalid",
+        "completed_stages": []
+      },
+      {
+        "id": "launch_policy",
+        "expected": "platform_policy_mismatch",
+        "observed": "platform_policy_mismatch",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature"
+        ]
+      },
+      {
+        "id": "minimum_tcb",
+        "expected": "platform_policy_mismatch",
+        "observed": "platform_policy_mismatch",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature"
+        ]
+      },
+      {
+        "id": "malformed_hcl",
+        "expected": "malformed_hcl",
+        "observed": "malformed_hcl",
+        "completed_stages": []
+      },
+      {
+        "id": "changed_snp_signature",
+        "expected": "snp_signature_invalid",
+        "observed": "snp_signature_invalid",
+        "completed_stages": [
+          "endorsements"
+        ]
+      },
+      {
+        "id": "changed_vcek_chip",
+        "expected": "endorsement_report_mismatch",
+        "observed": "endorsement_report_mismatch",
+        "completed_stages": []
+      },
+      {
+        "id": "substituted_hcl_attestation_key",
+        "expected": "hcl_binding_invalid",
+        "observed": "hcl_binding_invalid",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy"
+        ]
+      },
+      {
+        "id": "changed_quote_signature",
+        "expected": "quote_binding_invalid",
+        "observed": "quote_binding_invalid",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key"
+        ]
+      },
+      {
+        "id": "changed_pcr",
+        "expected": "quote_binding_invalid",
+        "observed": "quote_binding_invalid",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key"
+        ]
+      },
+      {
+        "id": "changed_ima",
+        "expected": "quote_binding_invalid",
+        "observed": "quote_binding_invalid",
+        "completed_stages": [
+          "endorsements",
+          "snp_signature",
+          "platform_policy",
+          "hcl_key"
+        ]
+      },
+      {
+        "id": "oversized_reference",
+        "expected": "input_too_large",
+        "observed": "api_input_error"
+      },
+      {
+        "id": "endorsement_not_yet_valid",
+        "expected": "endorsement_chain_invalid",
+        "observed": "endorsement_chain_invalid"
+      },
+      {
+        "id": "endorsement_expired",
+        "expected": "endorsement_chain_invalid",
+        "observed": "endorsement_chain_invalid"
+      }
+    ],
+    "samples": 30,
+    "local_appraisal_ms": [
+      2.7227450627833605,
+      2.5654409546405077,
+      2.739144954830408,
+      3.6183588672429323,
+      2.667842898517847,
+      2.753445180132985,
+      2.644442953169346,
+      2.5500410702079535,
+      2.661143895238638,
+      2.62134219519794,
+      2.669443842023611,
+      2.620442071929574,
+      2.5652421172708273,
+      2.6893438771367073,
+      2.659643068909645,
+      2.5814420077949762,
+      2.914048032835126,
+      2.741944044828415,
+      2.8809471987187862,
+      2.658742945641279,
+      2.723944839090109,
+      2.638842910528183,
+      2.7515441179275513,
+      2.6832439471036196,
+      2.7473450172692537,
+      2.667242893949151,
+      2.5862420443445444,
+      2.6168429758399725,
+      2.672042930498719,
+      2.5947419926524162
+    ],
+    "p95_ms": 2.914048032835126,
+    "target_ms": 3000,
+    "target_met": true,
+    "timing_scope": "All inputs already local; includes caller serialization and Rust checks; excludes collection and network"
+  },
+  "hardware_staging": {
+    "started_at": "2026-09-23T23:50:56.404524+00:00",
+    "ended_at": "2026-09-23T23:51:22.438537+00:00",
+    "tests": [
+      {
+        "id": "installed_wheel_match",
+        "expected_admitted": true,
+        "observed_admitted": true,
+        "application_requests": 1
+      },
+      {
+        "id": "installed_wheel_mismatch",
+        "expected_admitted": false,
+        "observed_admitted": false,
+        "application_requests": 0
+      },
+      {
+        "id": "origin_scope_shared_certificate",
+        "rejected_targets": 3,
+        "application_requests": 0
+      },
+      {
+        "id": "wrong_tls_hostname",
+        "observed": "https_authentication_failed",
+        "application_requests": 0
+      },
+      {
+        "id": "changed_metadata",
+        "observed": "https_authentication_failed",
+        "application_requests": 0
+      },
+      {
+        "id": "container_pair",
+        "match_requests": 1,
+        "mismatch_requests": 0,
+        "image": "confidential-ai-example:0.4.0"
+      },
+      {
+        "id": "no_credentials_during_appraisal",
+        "discovery_report_requests": 18,
+        "credential_bearing_discovery_report_requests": 0
+      }
+    ],
+    "downstream": "synthetic OpenAI-compatible responder; no inference evaluated",
+    "hardware": "live VM TPM collector and AMD-endorsed SNP evidence",
+    "requests": [
+      {
+        "path": "/v1/chat/completions",
+        "authorization_present": true
+      },
+      {
+        "path": "/v1/chat/completions",
+        "authorization_present": true
+      }
+    ]
+  },
+  "browser_results": {
+    "python_wasm_identical_cases_per_engine": 5,
+    "chromium_mv3_local_replay": "passed",
+    "chromium_live_match": "verified",
+    "chromium_live_mismatch": "policy_mismatch",
+    "firefox_installed_live": "not_tested",
+    "safari_macos": "not_tested"
+  }
+}

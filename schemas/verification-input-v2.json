@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "verification-input-v2",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        2
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "amd_chain": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "vcek": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "reference": {
+          "type": "string",
+          "contentEncoding": "base64"
+        }
+      },
+      "required": [
+        "report",
+        "amd_chain",
+        "vcek",
+        "reference"
+      ],
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "expected_nonce_base64": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]{43}=$"
+        },
+        "evaluation_unix_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        }
+      },
+      "required": [
+        "expected_nonce_base64",
+        "evaluation_unix_seconds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "inputs",
+    "policy",
+    "context"
+  ],
+  "additionalProperties": false
+}

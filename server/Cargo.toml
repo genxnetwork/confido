@@ -1,8 +1,8 @@
 [package]
-name = "confido_server"
-version = "0.3.0"
-edition = "2021"
 license = "Apache-2.0"
+name = "confido_server"
+version = "0.4.0"
+edition = "2021"
 
 [[bin]]
 name = "confido-server"
@@ -11,7 +11,7 @@ path = "src/main.rs"
 [dependencies]
 confido = { path = "../lib" }
 az-snp-vtpm = { git = "https://github.com/kinvolk/azure-cvm-tooling", rev = "9c6bff6c959994da280f8b3b5bad62a1600063d0", features = ["attester"] }
-openssl = "0.10"
+openssl = { version = "0.10", features = ["vendored"] }
 serde = "1.0"
 serde_json = "1.0"
 log = "0.4"
@@ -20,6 +20,7 @@ env_logger = "0.9"
 tokio = { version = "1", features = ["full"] }
 actix-web = "4.0.0-beta.8" 
 clap = "3.0.0-beta.5"
-bollard = { version = "0.16" }
-futures-util = "0.3"
-libc = "0.2"
+
+confido-protocol = { path = "../protocol" }
+tss-esapi = "7.7"
+x509-parser = "=0.16.0"
