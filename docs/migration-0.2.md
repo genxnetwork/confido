@@ -10,7 +10,7 @@ transcript stay at v1. Result, policy and archive schemas are now v2.
 | Earlier development API | Confido 0.2 owner/API |
 |---|---|
 | `confido-atls`, `import confido` | `confido-verifier`, `import confido_verifier` |
-| `discover_py` | Caller HTTP and discovery validation |
+| `discover_py` | Removed; caller selects the HTTPS origin locally and posts a nonce directly to `/tee-report` |
 | `connect_py`, `AttestedSession` | Removed; caller collection → verify → transport → admission |
 | `appraise_offline_py` | Caller decodes archive, supplies nonce/time to `verify` |
 | legacy `aTLS_connect_py` | Removed |
@@ -35,9 +35,10 @@ historical. Stored result JSON is never a substitute for running the verifier.
 Use `confido_client migrate-archive OLD NEW TIME` for extension-compatible v2 input;
 legacy report reserialization changes its raw-byte fingerprint, not its v1 binding.
 
-The native chat demo owns its `_confai_transport` wheel. It verifies exact peer
-certificate, hostname and validity on each connection, confirms service metadata
-without credentials, then reads chat credentials. The extension does not depend
+The native chat demo owns its `_confai_transport` wheel. After evidence verification,
+it sends a credentialless `HEAD /tee-report` over TLS pinned to the quote-bound
+certificate, checking the hostname and certificate validity before reading chat
+credentials. The extension does not depend
 on this native transport and does not provide application admission.
 
 The transport package keeps its own version. When a downstream build invokes
@@ -100,7 +101,7 @@ Source fingerprints cover explicit source/manifests/locks/build scripts, includi
 uncommitted changes and additions. The chat app's `build/runtime.json` links those
 fingerprints to wheel bytes and the loaded native binary. `make dev-chat` rebuilds
 stale development artifacts and starts a fresh Python process. Direct invocation
-checks the manifest before discovery and suggests `make dev-update` on mismatch.
+checks the manifest before collection and suggests `make dev-update` on mismatch.
 Containers check their embedded manifest and caller/native bytes without a checkout.
 
 Extension packaging emits `runtime-manifest.json`; the Worker checks bundled
