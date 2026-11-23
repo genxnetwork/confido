@@ -19,8 +19,8 @@ PROJECT_CRATES = {
         "lib",
         "client",
         "server",
-        "protocol",
-        "evidence-core",
+        "evidence/protocol",
+        "evidence/core",
         "bindings/python",
         "bindings/wasm",
     )

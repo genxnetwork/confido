@@ -3,19 +3,6 @@
 version = 4
 
 [[package]]
-name = "attestation-evidence-core"
-version = "0.2.0"
-dependencies = [
- "base64",
- "confido-protocol",
- "hex",
- "openssl",
- "ring",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -44,7 +31,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
-name = "confido-protocol"
+name = "evidence-core"
+version = "0.2.0"
+dependencies = [
+ "base64",
+ "evidence-protocol",
+ "hex",
+ "openssl",
+ "ring",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "evidence-protocol"
 version = "0.2.0"
 dependencies = [
  "base64",

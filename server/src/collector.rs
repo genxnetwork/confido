@@ -46,7 +46,7 @@ const VTPM_QUOTE_PCR_SLOTS: [PcrSlot; 24] = [
     PcrSlot::Slot23,
 ];
 
-pub use confido_protocol::{Algorithm, PcrBank, Quote};
+pub use evidence_protocol::{Algorithm, PcrBank, Quote};
 fn tss_algo(a: Algorithm) -> HashingAlgorithm {
     match a {
         Algorithm::Sha1 => HashingAlgorithm::Sha1,

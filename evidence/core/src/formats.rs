@@ -1,6 +1,6 @@
 //! Bounded decoders for the existing Azure SNP/HCL and TPM quote profile.
 //! Layouts adapted from the pinned Microsoft azure-cvm-tooling (MIT), see notices.
-use confido_protocol::{Algorithm, Evidence, Quote};
+use evidence_protocol::{Algorithm, Evidence, Quote};
 use ring::{digest, signature};
 use serde::Deserialize;
 

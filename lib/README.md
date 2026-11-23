@@ -9,11 +9,11 @@ is in `../bindings/wasm`. `make wheel`/`make install` forward to the Python pack
 Legacy connection APIs were removed; see [migration](../docs/migration-0.2.md).
 
 The implementation is split by verification stage: `verify.rs` owns policy
-parsing and orchestration, [`evidence-core/`](../evidence-core/README.md) decodes
+parsing and orchestration, [`evidence/core/`](../evidence/core/README.md) decodes
 SNP/HCL and quote structures, `crypto.rs` validates AMD certificate paths,
 `reference.rs` compares IMA measurements, `pcr.rs` replays PCR state, and
 `result.rs` defines structured checks and results. `lib.rs` exposes the public
-API. Larger unit tests live in `../evidence-core/src/formats/tests.rs` and
+API. Larger unit tests live in `../evidence/core/src/formats/tests.rs` and
 `src/reference/tests.rs`; installed-wheel tests and fixtures are under `tests/`.
 
 A `verified` result concerns evidence only. The caller must separately authenticate

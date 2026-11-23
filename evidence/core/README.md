@@ -13,15 +13,15 @@ verifier performs those checks independently.
 | [`src/formats.rs`](src/formats.rs) | Bounded SNP/HCL and quote decoding, signature and binding checks. |
 | [`src/formats/tests.rs`](src/formats/tests.rs) | Signed synthetic quote and rejection tests. |
 | [`tests/fixtures/binding-v1.json`](tests/fixtures/binding-v1.json) | Frozen wire-v1 binding vector. |
-| [`Cargo.toml`](Cargo.toml), `Cargo.lock` | Package dependencies and reproducible test build. |
+| [`Cargo.toml`](Cargo.toml), [`../Cargo.lock`](../Cargo.lock) | Package dependencies and shared reproducible test build. |
 
 The wire structures and transcript construction remain in
 [`protocol/`](../protocol/README.md). The two crates form one shared component:
-when they move to an independent repository, Confido and Attestor must pin
-compatible releases of both crates and the wire/binding contract.
+when this workspace moves to an independent repository, Confido and Attestor
+must pin compatible releases of both crates and the wire/binding contract.
 
-Run `cargo test --locked --manifest-path evidence-core/Cargo.toml` from the
-repository root. The normal dependency graph must stay free of TPM, HTTP, and
+Run `cargo test --locked --workspace` from the evidence workspace root. The
+normal dependency graph must stay free of TPM, HTTP, and
 application transport dependencies. The parsers retain attribution to the
 pinned Microsoft azure-cvm-tooling source; see
 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).

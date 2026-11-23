@@ -7,12 +7,17 @@ from pathlib import Path
 
 def files(root, scope):
     scopes = {
-        "core": ["lib", "protocol", "evidence-core"],
+        "core": ["lib", "evidence/protocol", "evidence/core"],
         "python": ["bindings/python"],
         "wasm": ["bindings/wasm"],
         "cli": ["client"],
     }
-    paths = {root / "scripts/source_fingerprint.py", root / "build_support.rs"}
+    paths = {
+        root / "scripts/source_fingerprint.py",
+        root / "build_support.rs",
+        root / "evidence/Cargo.toml",
+        root / "evidence/Cargo.lock",
+    }
     directories = []
     for relative in scopes[scope]:
         base = root / relative
@@ -27,10 +32,9 @@ def files(root, scope):
                 "pyproject.toml",
                 "Makefile",
             )
-            # The standalone protocol crate has no committed lockfile. Core
-            # builds use lib/Cargo.lock; an ad-hoc protocol test may generate
-            # a local lockfile that must not change the release identity.
-            if not (relative == "protocol" and name == "Cargo.lock")
+            # Workspace members share evidence/Cargo.lock. A transient lockfile
+            # created by a standalone member command is not a build input.
+            if not (relative.startswith("evidence/") and name == "Cargo.lock")
             if (base / name).is_file()
         )
     return sorted(paths), directories

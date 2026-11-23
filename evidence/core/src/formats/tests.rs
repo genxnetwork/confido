@@ -1,15 +1,15 @@
 fn verify(
-    q: &confido_protocol::Quote,
+    q: &evidence_protocol::Quote,
     key: &openssl::pkey::PKey<openssl::pkey::Public>,
     nonce: &[u8],
 ) -> Result<(), String> {
     let rsa = key.rsa().unwrap();
     super::quote(q, &rsa.n().to_vec(), &rsa.e().to_vec(), nonce)
 }
-use confido_protocol::Evidence;
-use confido_protocol::IMALogEntry;
-use confido_protocol::Quote;
-use confido_protocol::{Base64, Nonce};
+use evidence_protocol::Evidence;
+use evidence_protocol::IMALogEntry;
+use evidence_protocol::Quote;
+use evidence_protocol::{Base64, Nonce};
 use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{PKey, Private, Public};

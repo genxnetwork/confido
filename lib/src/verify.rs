@@ -2,7 +2,7 @@ use crate::{
     crypto, formats, reference::ReferenceValues, result::Stage, Status, VerificationError,
     VerificationResult,
 };
-use confido_protocol::{AttestationResponse, PROFILE, WIRE_VERSION};
+use evidence_protocol::{AttestationResponse, EvidenceEnvelope, PROFILE, WIRE_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 pub const MAX_BODY: usize = 4 * 1024 * 1024;
@@ -94,6 +94,11 @@ pub fn inspect_requirements(report_json: &[u8]) -> Result<Requirements, Verifica
     }
     let response: AttestationResponse =
         serde_json::from_slice(report_json).map_err(|e| VerificationError(e.to_string()))?;
+    if !response.envelope.is_supported() {
+        return Err(VerificationError(
+            "Unsupported report profile/version".into(),
+        ));
+    }
     let snp = formats::snp(&response.evidence.report).map_err(VerificationError)?;
     let product = snp.product_hint().map_err(VerificationError)?;
     Ok(Requirements {
@@ -200,19 +205,13 @@ fn verify_inner(
             return;
         }
     }
-    #[derive(Deserialize)]
-    struct Envelope {
-        profile: String,
-        #[serde(rename = "wireVersion")]
-        wire: u32,
-    }
-    let env: Envelope = check!(
+    let envelope: EvidenceEnvelope = check!(
         Stage::Profile,
         Status::InvalidEvidence,
         "malformed_evidence",
         serde_json::from_slice(i.report_json)
     );
-    if env.profile != PROFILE || env.wire != 1 {
+    if !envelope.is_supported() {
         r.fail(
             Stage::Profile,
             Status::UnsupportedProfile,

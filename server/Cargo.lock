@@ -305,17 +305,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "attestation-evidence-core"
-version = "0.2.0"
-dependencies = [
- "base64 0.13.1",
- "confido-protocol",
- "ring",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -597,28 +586,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
-name = "confido-protocol"
-version = "0.2.0"
-dependencies = [
- "base64 0.13.1",
- "getrandom 0.2.17",
- "hex",
- "ring",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "confido_server"
 version = "0.2.0"
 dependencies = [
  "actix-web",
- "attestation-evidence-core",
  "az-snp-vtpm",
  "base64 0.13.1",
  "clap 3.2.25",
- "confido-protocol",
  "env_logger",
+ "evidence-core",
+ "evidence-protocol",
  "log",
  "openssl",
  "serde",
@@ -858,6 +835,29 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "evidence-core"
+version = "0.2.0"
+dependencies = [
+ "base64 0.13.1",
+ "evidence-protocol",
+ "ring",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "evidence-protocol"
+version = "0.2.0"
+dependencies = [
+ "base64 0.13.1",
+ "getrandom 0.2.17",
+ "hex",
+ "ring",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

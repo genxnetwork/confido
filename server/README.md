@@ -4,7 +4,7 @@ This native component reads AMD SEV-SNP, vTPM, and IMA evidence on a compatible
 host. `POST /tee-report` accepts a challenge and returns collected evidence;
 `HEAD /tee-report` is the credentialless endpoint used by callers to probe the
 appraised TLS peer. Before returning evidence, the collector calls
-[`evidence-core/`](../evidence-core/README.md) to reject inconsistent snapshots.
+[`evidence/core/`](../evidence/core/README.md) to reject inconsistent snapshots.
 Evidence appraisal belongs to [`lib/`](../lib/).
 
 | File | Role |

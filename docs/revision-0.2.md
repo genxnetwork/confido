@@ -48,8 +48,8 @@ own compatibility rules.
 | Component | Current responsibility | Destination |
 |---|---|---|
 | `lib/` | Deterministic bytes/policy/nonce/time verification | Confido, then GENXT upstream |
-| `protocol/` | Shared evidence wire and binding types | Future common package with `evidence-core/` |
-| `evidence-core/` | Shared bounded parsing and snapshot consistency checks | Future common package with `protocol/` |
+| `evidence/protocol/` | Shared evidence wire and binding types | Future `evidence` repository with `evidence/core/` |
+| `evidence/core/` | Shared bounded parsing and snapshot consistency checks | Future `evidence` repository with `evidence/protocol/` |
 | `bindings/python/`, `bindings/wasm/` | Thin wrappers over the same verifier | Confido |
 | `server/` | Native SNP/vTPM/IMA collection and report endpoint | JAN Attestor |
 | `client/` | Evidence retrieval, offline verification and replay | Split caller/verification ownership during extraction |
@@ -60,11 +60,11 @@ its own repository history. New integration results must identify
 the actual revisions used; historical cross-repository reports are not current
 acceptance evidence.
 
-The collector now depends on `protocol/` and `evidence-core/`, without a direct
-dependency on the full Confido verifier. A future common repository should move
-these two crates together: the evidence core uses the wire types and transcript
-defined by the protocol crate. Version both against the same wire/binding
-contract before updating Confido and Attestor independently.
+The collector now depends on the two crates in `evidence/`, without a direct
+dependency on the full Confido verifier. The shared workspace is staged inside
+this checkout so locked builds remain self-contained. When the independent
+`evidence` repository is published, move both crates together, pin the same
+release in Confido and Attestor, and retain the wire/binding contract tests.
 
 Old Docker inventory and dmesg implementations remain in Git history. They are
 not authenticated evidence in the supported profile and are absent from the

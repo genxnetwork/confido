@@ -1,8 +1,8 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use collector as vtpm;
-use confido_protocol::Evidence;
-use confido_protocol::Nonce;
-use confido_protocol::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
+use evidence_protocol::Evidence;
+use evidence_protocol::Nonce;
+use evidence_protocol::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
 mod collector;
 use log::{debug, error, info};
 use openssl::asn1::Asn1Time;
@@ -126,7 +126,7 @@ impl Attester {
                     Evidence::new(report, quote, serde_json::Value::Null, order, measurements);
                 // TPM quote and PCR read are separate commands. Verify their
                 // signed digest and selection before returning a snapshot.
-                attestation_evidence_core::verify_snapshot(
+                evidence_core::verify_snapshot(
                     &evidence,
                     nonce.as_bytes(),
                     &certificate.to_der()?,
@@ -177,19 +177,13 @@ async fn atls_http_route(
                 .body("Consistent evidence snapshot unavailable");
         }
     };
-    let response = AttestationResponse {
+    let response = AttestationResponse::new(
         evidence,
-        certificate: match certificate.to_pem() {
+        match certificate.to_pem() {
             Ok(pem) => pem,
             Err(_) => return HttpResponse::InternalServerError().finish(),
         },
-    };
-    let mut response = match serde_json::to_value(response) {
-        Ok(value) => value,
-        Err(_) => return HttpResponse::InternalServerError().finish(),
-    };
-    response["profile"] = serde_json::json!(confido_protocol::PROFILE);
-    response["wireVersion"] = serde_json::json!(confido_protocol::WIRE_VERSION);
+    );
     HttpResponse::Ok().json(response)
 }
 

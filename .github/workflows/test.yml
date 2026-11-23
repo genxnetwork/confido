@@ -20,7 +20,7 @@ jobs:
           rustup target add wasm32-unknown-unknown
       - name: Core and CLI
         run: |
-          cargo test --locked --manifest-path evidence-core/Cargo.toml
+          cargo test --locked --manifest-path evidence/Cargo.toml --workspace
           cargo test --locked --manifest-path lib/Cargo.toml
           cargo build --locked --manifest-path client/Cargo.toml
           python3 scripts/check_verifier_dependencies.py

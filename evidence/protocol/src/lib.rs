@@ -4,6 +4,28 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 pub const PROFILE: &str = "azure-snp-vtpm-ima/1";
 pub const WIRE_VERSION: u32 = 1;
+
+/// Versioned fields at the top of every evidence response.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct EvidenceEnvelope {
+    pub profile: String,
+    #[serde(rename = "wireVersion")]
+    pub wire_version: u32,
+}
+
+impl EvidenceEnvelope {
+    pub fn current() -> Self {
+        Self {
+            profile: PROFILE.into(),
+            wire_version: WIRE_VERSION,
+        }
+    }
+
+    pub fn is_supported(&self) -> bool {
+        self.profile == PROFILE && self.wire_version == WIRE_VERSION
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AttestationRequest {
@@ -30,8 +52,20 @@ pub struct IMALogEntry {
 
 #[derive(Deserialize, Serialize)]
 pub struct AttestationResponse {
+    #[serde(flatten)]
+    pub envelope: EvidenceEnvelope,
     pub evidence: Evidence,
     pub certificate: Vec<u8>, // can't use X509 as it non-serializable
+}
+
+impl AttestationResponse {
+    pub fn new(evidence: Evidence, certificate: Vec<u8>) -> Self {
+        Self {
+            envelope: EvidenceEnvelope::current(),
+            evidence,
+            certificate,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -237,3 +271,68 @@ fn no_randomness(_: &mut [u8]) -> Result<(), getrandom::Error> {
 }
 #[cfg(target_arch = "wasm32")]
 getrandom::register_custom_getrandom!(no_randomness);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    fn synthetic_response() -> AttestationResponse {
+        AttestationResponse::new(
+            Evidence::new(
+                vec![1, 2],
+                Quote {
+                    signature: vec![],
+                    message: vec![],
+                    pcr_banks: vec![],
+                },
+                Value::Null,
+                ModuleLoadOrder {
+                    kernel: String::new(),
+                    order: vec![],
+                },
+                vec![],
+            ),
+            vec![3],
+        )
+    }
+
+    #[test]
+    fn response_uses_flat_versioned_wire_envelope() {
+        let value = serde_json::to_value(synthetic_response()).unwrap();
+        assert_eq!(
+            value,
+            json!({
+                "profile": PROFILE,
+                "wireVersion": WIRE_VERSION,
+                "evidence": {
+                    "report": [1, 2],
+                    "quote": {"signature": [], "message": [], "pcr_banks": []},
+                    "cgpu_attestation": null,
+                    "module_load_order": {"kernel": "", "order": []},
+                    "ima_measurements": []
+                },
+                "certificate": [3]
+            })
+        );
+        let header: EvidenceEnvelope = serde_json::from_value(value.clone()).unwrap();
+        assert!(header.is_supported());
+        let decoded: AttestationResponse = serde_json::from_value(value).unwrap();
+        assert!(decoded.envelope.is_supported());
+        assert_eq!(decoded.evidence.report, [1, 2]);
+        assert_eq!(decoded.certificate, [3]);
+    }
+
+    #[test]
+    fn response_requires_version_and_rejects_unsupported_header() {
+        let mut value = serde_json::to_value(synthetic_response()).unwrap();
+        value.as_object_mut().unwrap().remove("wireVersion");
+        assert!(serde_json::from_value::<EvidenceEnvelope>(value.clone()).is_err());
+        assert!(serde_json::from_value::<AttestationResponse>(value).is_err());
+
+        let mut value = serde_json::to_value(synthetic_response()).unwrap();
+        value["wireVersion"] = json!(WIRE_VERSION + 1);
+        let header: EvidenceEnvelope = serde_json::from_value(value).unwrap();
+        assert!(!header.is_supported());
+    }
+}

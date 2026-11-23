@@ -1,6 +1,6 @@
 use crate::pcr::Pcr;
-use confido_protocol as vtpm;
-use confido_protocol::{IMALogEntry, ModuleLoadOrder};
+use evidence_protocol as vtpm;
+use evidence_protocol::{IMALogEntry, ModuleLoadOrder};
 
 use serde::{Deserialize, Serialize};
 

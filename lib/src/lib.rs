@@ -4,9 +4,9 @@ mod pcr;
 mod reference;
 mod result;
 mod verify;
-pub(crate) use attestation_evidence_core::formats;
-pub use attestation_evidence_core::verify_snapshot;
-pub use confido_protocol as protocol;
+pub(crate) use evidence_core::formats;
+pub use evidence_core::verify_snapshot;
+pub use evidence_protocol as protocol;
 pub use result::{Check, Status, VerificationError, VerificationResult};
 pub use verify::*;
 
