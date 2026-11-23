@@ -13,12 +13,16 @@ and package attribution need to agree at a reproducible checkpoint. The dated
 validation below identifies what has already been exercised and at which source
 revisions.
 
-After fixing that checkpoint by commit identity, create JAN Attestor with shared
-history. Confido and Attestor then need separate active source trees, build
-graphs, release workflows and acceptance checks. Propose the substantive
-verifier changes upstream to GENXT from JAN; continue collector development in
-JAN. The published research baseline remains fixed. The tracking issue and PR
-should state the final behavior, acceptance evidence and remaining limits.
+The pre-extraction checkpoint is now fixed by signed local commits: Confido
+`075364083ac982be1f38945a30b615d61a475f67`, confidential-ai-example
+`c174f34da57ca5823aa6b512c484dfd42d47d967`, and the published Evidence
+dependency `900d420b0928c4693e1143aa33a33ab670147e3c`. Create JAN Attestor
+from that Confido checkpoint with shared history. Confido and Attestor then need
+separate active source trees, build graphs, release workflows and acceptance
+checks. Propose the substantive verifier changes upstream to GENXT from JAN;
+continue collector development in JAN. The published research baseline remains
+fixed. The tracking issue and PR should state the final behavior, acceptance
+evidence and remaining limits.
 
 ## Inputs and provenance
 
@@ -110,10 +114,12 @@ the automated Actions OIDC path remains pending. See the
 [reference registry record](revision/reference-registry-stage.md) and
 [independent rerun checklist](revision/rerun.md).
 
-Before checkpoint R, review release packaging and attribution, and obtain
-independent acceptance if required for publication. Then record R and extract
-Attestor with shared history. A release tag and package publication are separate
-steps; the dated acceptance records do not certify later edits in this tree.
+The signed checkpoint records the reviewed source and the Linux attribution
+archives. RPM creation and independent acceptance still require their own
+checks before publication. Extract Attestor with shared history from this
+checkpoint; a release tag and package publication are separate steps. The dated
+acceptance records identify the source fingerprints used in those runs and do
+not certify later executable edits.
 
 ## Later execution trust work
 
