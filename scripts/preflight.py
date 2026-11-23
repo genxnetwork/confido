@@ -18,9 +18,9 @@ def main():
     parser.add_argument("--flint", type=Path, default=ROOT.parent / "flint")
     args = parser.parse_args()
     import confido_verifier
-    if getattr(confido_verifier, "__version__", None) != "0.4.0":
-        raise SystemExit("FAIL: stale wheel; expected Confido 0.4.0")
-    print("PASS: installed Confido 0.4.0")
+    if getattr(confido_verifier, "__version__", None) != "0.2.0":
+        raise SystemExit("FAIL: stale wheel; expected Confido 0.2.0")
+    print("PASS: installed Confido 0.2.0")
     fixture = ROOT / "protocol/fixtures/tee-report-advertisement-v1.json"
     sidecar_fixture = ROOT.parent / "ga4gh_service_info_sidecar_gsoc_2026/internal/handler/testdata/tee-report-advertisement-v1.json"
     if sidecar_fixture.exists() and fixture.read_bytes() != sidecar_fixture.read_bytes():

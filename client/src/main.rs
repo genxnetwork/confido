@@ -166,7 +166,7 @@ async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
             p.reference.repository, p.reference.path, p.reference.commit
         ))
         .header("Accept", "application/vnd.github.raw+json")
-        .header("User-Agent", "confido-caller/0.4.0");
+        .header("User-Agent", concat!("confido-caller/", env!("CARGO_PKG_VERSION")));
     if let Ok(token) = std::env::var("CONFIDO_TRS_TOKEN") {
         request = request.bearer_auth(token)
     }
@@ -231,7 +231,7 @@ async fn main() -> Result<()> {
     }
 
     if a.get(1).map(String::as_str) == Some("--version") {
-        println!("confido_client 0.4.0");
+        println!("confido_client {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     if a.get(1).map(String::as_str) == Some("migrate-archive") {

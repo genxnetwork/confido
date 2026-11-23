@@ -587,7 +587,7 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "confido"
-version = "0.4.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.13.1",
  "confido-protocol",
@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "confido-protocol"
-version = "0.4.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.13.1",
  "getrandom 0.2.17",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "confido_server"
-version = "0.4.0"
+version = "0.2.0"
 dependencies = [
  "actix-web",
  "az-snp-vtpm",

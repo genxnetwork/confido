@@ -10,7 +10,7 @@ class VerifierTests(unittest.TestCase):
     def test_no_transport_api(self):
         for name in ("connect_py", "discover_py", "appraise_offline_py", "request", "AttestedSession"):
             self.assertFalse(hasattr(verifier, name))
-        self.assertEqual(verifier.__version__, "0.4.0")
+        self.assertEqual(verifier.__version__, "0.2.0")
     def test_build_metadata_is_separate_from_result(self):
         info=verifier.build_info()
         self.assertEqual(info['core']['pipeline_revision'], 2)
