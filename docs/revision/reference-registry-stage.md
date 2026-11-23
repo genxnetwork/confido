@@ -20,11 +20,11 @@ and a new entry rather than changing a pinned reference.
    `fcf172f378225648d50a69028020b1798b90a0c9`. Keep that commit available:
    the GENXT request pins its manifest and reference bytes.
 2. Review and merge the GENXT `revision/reference-endorsement` branch into
-   `master`. Its branch rules require a pull request, one approval from a
-   collaborator other than the PR author, and the passing `test` check. The
-   Teraveri `main` rules require a pull request and the passing `validate`
-   check; there is currently only one collaborator, so they require no separate
-   approval. Both branches reject force pushes and deletion.
+   `master`. Its branch rules require a pull request and the passing `test`
+   check, but no approving review. The Teraveri `main` rules require a pull
+   request and the passing `validate` check; there is currently only one
+   collaborator, so they require no separate approval. Both branches reject
+   force pushes and deletion.
 3. Run GENXT **Endorse reference manifest** on `master` with request ID
    `genoa-stage-1071`. Download the `genxt-reference-endorsement` artifact and
    copy its `genxt.sigstore.json` to the registry entry's `endorsements/`
