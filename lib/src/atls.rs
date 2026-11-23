@@ -24,6 +24,15 @@ pub fn atls_debug() {
 #[serde(deny_unknown_fields)]
 pub struct AttestationRequest {
     pub nonce: Base64, // todo change to Nonce
+    #[serde(default)]
+    pub options: AttestationOptions,
+}
+
+/// Optional diagnostics; these do not change evidence verification.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct AttestationOptions {
+    pub dmesg: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -93,14 +102,22 @@ pub async fn aTLS_connect(host: &str) -> Result<X509, Box<dyn Error>> {
 }
 
 #[allow(non_snake_case)] // Published compatibility name.
-pub async fn aTLS_connect_with_registry(
-    host: &str,
-    trs_registry: &str,
-) -> Result<X509, Box<dyn Error>> {
+pub async fn aTLS_connect_with_registry(host: &str, trs_registry: &str) -> Result<X509, Box<dyn Error>> {
+    let response = request_attestation_with_registry(host, AttestationOptions::default(), trs_registry).await?;
+    Ok(X509::from_pem(&response.certificate)?)
+}
+
+/// Request and verify evidence while retaining optional diagnostics.
+pub async fn request_attestation(host: &str, options: AttestationOptions) -> Result<AttestationResponse, Box<dyn Error>> {
+    request_attestation_with_registry(host, options, DEFAULT_TRS_REGISTRY).await
+}
+
+async fn request_attestation_with_registry(host: &str, options: AttestationOptions, trs_registry: &str) -> Result<AttestationResponse, Box<dyn Error>> {
     info!("fn aTLS_connect: {:?}", host.to_string());
     let mut nonce: Nonce = Nonce::generate();
     let request = AttestationRequest {
         nonce: nonce.clone().into(),
+        options,
     };
 
     info!(
@@ -166,7 +183,7 @@ pub async fn aTLS_connect_with_registry(
 
     info!("aTLS certificate verification successful");
 
-    Ok(certificate)
+    Ok(response)
 }
 
 impl ATLS {
@@ -237,5 +254,31 @@ impl ATLS {
 
     pub async fn head(&self, url: &str, body: &str) -> Result<String, Box<dyn std::error::Error>> {
         self.request(reqwest::Method::HEAD, url, Some(body)).await
+    }
+}
+
+#[cfg(test)]
+mod request_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn legacy_request_leaves_diagnostics_disabled() {
+        let request: AttestationRequest = serde_json::from_value(json!({"nonce": "AA=="})).unwrap();
+        assert!(!request.options.dmesg);
+    }
+
+    #[test]
+    fn empty_options_leave_diagnostics_disabled() {
+        let request: AttestationRequest = serde_json::from_value(json!({"nonce": "AA==", "options": {}})).unwrap();
+        assert!(!request.options.dmesg);
+    }
+
+    #[test]
+    fn diagnostics_require_explicit_opt_in() {
+        let request: AttestationRequest = serde_json::from_value(json!({"nonce": "AA==", "options": {"dmesg": true}})).unwrap();
+        assert!(request.options.dmesg);
+        let encoded = serde_json::to_value(request).unwrap();
+        assert_eq!(encoded["options"]["dmesg"], true);
     }
 }

@@ -18,6 +18,10 @@ pub struct Evidence {
     cgpu_attestation: serde_json::Value,
     module_load_order: ModuleLoadOrder,
     pub ima_measurements: Vec<IMALogEntry>,
+    #[serde(default)]
+    pub docker_containers: serde_json::Value,
+    #[serde(default)]
+    pub dmesg: Vec<String>,
 }
 
 #[cfg(test)]
@@ -49,6 +53,8 @@ impl Evidence {
             cgpu_attestation,
             module_load_order,
             ima_measurements,
+            docker_containers: serde_json::Value::Null,
+            dmesg: Vec::new(),
         }
     }
 
@@ -209,5 +215,24 @@ impl Evidence {
             },
             None => Err("No PCR bank found"),
         }
+    }
+}
+
+#[cfg(test)]
+mod compatibility_tests {
+    use super::*;
+
+    #[test]
+    fn evidence_without_dmesg_remains_readable() {
+        let legacy = serde_json::json!({
+            "report": [],
+            "ima_measurements": [],
+            "quote": {"signature": [], "message": [], "pcr_banks": []},
+            "cgpu_attestation": null,
+            "module_load_order": {"kernel": "", "order": []},
+            "docker_containers": null
+        });
+        let evidence: Evidence = serde_json::from_value(legacy).unwrap();
+        assert!(evidence.dmesg.is_empty());
     }
 }

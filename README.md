@@ -101,6 +101,7 @@ Use the aligned [deployment templates](server/deployment/README.md), [preflight]
 - [Wire/deployment decision](docs/revision/decisions/003-contract-and-build.md)
 - [Technical walkthrough](docs/revision/walkthrough.md) and [roadmap](docs/revision/roadmap.md)
 
-## Licence status
+## Licence
 
-Confido's repository licence and the existing proprietary RPM labels require an owner decision before an open release. This revision neither assigns a new licence nor claims a published open release. Upstream licences and notices remain applicable; see `THIRD_PARTY_NOTICES.md`.
+Project-authored material is licensed under [Apache-2.0](LICENSE). Third-party
+components retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md).

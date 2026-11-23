@@ -716,6 +716,7 @@ async fn collect(
         .post(origin.join("/tee-report")?)
         .json(&AttestationRequest {
             nonce: nonce.clone().into(),
+            options: Default::default(),
         })
         .send()
         .await?;

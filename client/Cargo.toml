@@ -2,6 +2,7 @@
 name = "confido_client"
 version = "0.3.0"
 edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
 confido = { path = "../lib" }

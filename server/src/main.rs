@@ -1,3 +1,6 @@
+mod docker_utils;
+mod dmesg;
+use docker_utils::get_running_containers;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use confido::atls::{AttestationRequest, AttestationResponse, IMALogEntry, ModuleLoadOrder};
 use confido::evidence::Evidence;
@@ -158,11 +161,12 @@ async fn atls_http_route(
         Err(_) => return HttpResponse::ServiceUnavailable().body("Evidence collector busy"),
     };
     let cert = Arc::clone(&certificate);
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
     let task = tokio::task::spawn_blocking(move || {
         let _permit = permit;
         Attester::gather_evidence(&nonce, &cert, algorithms).map_err(|e| e.to_string())
     });
-    let evidence = match tokio::time::timeout(Duration::from_secs(20), task).await {
+    let mut evidence = match tokio::time::timeout_at(deadline, task).await {
         Ok(Ok(Ok(evidence))) => evidence,
         other => {
             error!(
@@ -172,6 +176,18 @@ async fn atls_http_route(
             return HttpResponse::ServiceUnavailable()
                 .body("Consistent evidence snapshot unavailable");
         }
+    };
+    evidence.docker_containers = tokio::time::timeout_at(deadline, get_running_containers())
+        .await
+        .unwrap_or(serde_json::Value::Null);
+    evidence.dmesg = if data.options.dmesg {
+        tokio::time::timeout_at(deadline, tokio::task::spawn_blocking(dmesg::read))
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .unwrap_or_else(|| vec!["no dmesg available".to_string()])
+    } else {
+        Vec::new()
     };
     let response = AttestationResponse {
         evidence,

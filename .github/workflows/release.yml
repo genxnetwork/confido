@@ -43,7 +43,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel tpm2-tss-devel rpm-build perl
+        sudo dnf install -y @development-tools openssl-devel pkgconfig tss2-devel tpm2-tss-devel rpm-build perl python3
 
         # Check if Perl and FindBin module are installed
         perl -e "use FindBin;" || { echo "Perl FindBin module not found!"; exit 1; }
@@ -71,6 +71,16 @@ jobs:
         cd client
         cargo build --locked --release
         cp target/release/confido_client ./confido-client
+
+    - name: Collect release licences and third-party attribution
+      run: |
+        set -euo pipefail
+        mkdir -p rpmbuild/SOURCES
+        cp LICENSE THIRD_PARTY_NOTICES.md rpmbuild/SOURCES/
+        for component in server client; do
+          cargo metadata --locked --format-version 1 --manifest-path "$component/Cargo.toml" > "$RUNNER_TEMP/confido-$component-metadata.json"
+          python3 scripts/collect_licenses.py "$RUNNER_TEMP/confido-$component-metadata.json" "rpmbuild/SOURCES/confido-$component-third-party-licenses.tar.gz"
+        done
 
     - name: Create RPM Package for Server
       run: |
