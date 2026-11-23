@@ -28,7 +28,13 @@ status. This manual signature provides exact-file integrity under that
 locally accepted key; it does not have the GitHub Actions OIDC provenance of
 the normal path below. The GENXT `master` rule still requires `test`.
 
-After the bundle is merged to the registry, enroll using its full commit:
+The working stage policy
+[`profiles/verifier-genoa-stage-registry.json`](../../profiles/verifier-genoa-stage-registry.json)
+currently pins the validated, public PR #1 head commit
+`1653e184df49bcbe1e5b6438069860757a2619c3`. It is usable before the PR
+merges because the commit is immutable and GitHub serves its exact bytes. Once
+the PR merges, regenerate and review the policy against the resulting `main`
+commit. To regenerate it, use:
 
 ```bash
 python3 scripts/enroll_reference.py \
