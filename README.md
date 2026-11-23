@@ -1,4 +1,6 @@
-# Confido 0.4
+# Confido 0.2
+
+Development revision in JAN DIGITRUST; a 0.2.0 release has not been published.
 
 Confido is a portable **evidence verifier**. It accepts bytes, locally selected
 policy, an independent expected nonce and explicit evaluation time. It returns an
@@ -124,10 +126,11 @@ operator enrollments, not vulnerability-free certification. Revocation/advisory
 updates are not fetched by the verifier. AMD chain validation supports this fixed
 profile, not general-purpose PKIX path discovery.
 
-See [migration](docs/migration-0.4.md), [design](docs/design/evidence-verifier-0.4.md),
-[implementation validation](docs/design/evidence-verifier-0.4-validation.md) and
-[third-party notices](THIRD_PARTY_NOTICES.md). Historical `docs/revision/` artifacts
-record 0.3 results and must not be interpreted as 0.4 validation.
+See the [0.2 revision plan and validation](docs/revision-0.2.md),
+[migration guide](docs/migration-0.2.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+The [earlier design](docs/design/evidence-verifier-0.4.md) and historical
+`docs/revision/` and `docs/design/` validation reports describe their recorded
+snapshots. Their 0.3/0.4 labels and old test results are retained as history.
 
 ## Origin and licence
 

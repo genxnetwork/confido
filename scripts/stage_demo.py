@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated hardware-backed acceptance run. Never replaces public listeners.
-Requires local 0.2.0 verifier and transport wheels, built server/sidecar, Nginx and access to the TPM.
+Requires the local 0.2.0 verifier and a compatible application transport wheel,
+built server/sidecar, Nginx and access to the TPM.
 The downstream chat responder is explicitly synthetic: no external inference.
 """
 import argparse

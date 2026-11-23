@@ -1,20 +1,29 @@
-# confido
+# Building Confido 0.2
 
-# server
-cd ./server
-cargo build
-RUSTLOG=debug target/debug/confido_server [host:port] [atls-certs-folder] 
+Use the pinned Rust toolchain in `rust-toolchain.toml`. Each package has its own
+Cargo manifest and lockfile. Run commands from the repository root.
 
-Build requirements: 
- - sudo yum install perl-FindBin perl-IPC-Cmd tss2 tss2-devel tpm2-tss tpm2-tss-devel clang
- - Fork of the [azure-cvm-tooling](https://github.com/genxnetwork/azure-cvm-tooling)
+```sh
+cargo test --locked --manifest-path lib/Cargo.toml
+cargo build --locked --manifest-path client/Cargo.toml
+cargo test --locked --manifest-path server/Cargo.toml
+```
 
-Ubuntu: 
- - snap install rustup --classic
- - rastup default stable
- - apt install clang libclang-dev libtss2-dev 
+The collector needs TPM2-TSS and the native development packages listed in the
+[README](README.md#build-and-test). Unit tests do not require TPM hardware.
 
-# client 
-cd ./client
-cargo build
-RUSTLOG=debug target/debug/confido_client 
+For a Python wheel, install maturin 1.15.0 and use the Makefile so that project and
+dependency attribution are included:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install 'maturin==1.15.0' jsonschema
+make -C bindings/python install PYTHON=python
+python -m unittest discover -s lib/tests -v
+```
+
+`PROFILE=dev` selects a development wheel. Release builds use `PROFILE=release`.
+Browser packaging instructions are in [extension/README.md](extension/README.md).
+The collector and CLI remain here until the common revision is validated and
+Attestor is extracted; see the [revision plan](docs/revision-0.2.md).
