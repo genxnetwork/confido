@@ -105,9 +105,19 @@ async fn rejects_invalid_nonce_oversize_and_busy_before_tpm_access() {
                         Arc::clone(&collector),
                     )
                 }),
+            )
+            .route(
+                "/tee-report",
+                web::head().to(|| async { HttpResponse::NoContent().finish() }),
             ),
     )
     .await;
+    let probe = actix_web::test::TestRequest::default()
+        .method(actix_web::http::Method::HEAD)
+        .uri("/tee-report")
+        .to_request();
+    let response = actix_web::test::call_service(&app, probe).await;
+    assert_eq!(response.status().as_u16(), 204);
     for (nonce, expected) in [
         ("bad!".to_string(), 400),
         (base64::encode([0; 32]), 503),

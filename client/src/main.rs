@@ -89,13 +89,6 @@ async fn kds(c: &reqwest::Client, url: &str) -> Result<Vec<u8>> {
     })
     .await?
 }
-fn validate_info(info: &Value, app: &Value) -> Result<()> {
-    let ad = json!({"endpoint":"/tee-report","method":"POST","profile":"azure-snp-vtpm-ima/1","wireVersion":1,"nonce":{"name":"nonce","in":"body","encoding":"base64","sizeBytes":32},"response":{"evidenceField":"evidence","certificateField":"certificate"},"sessionBinding":{"supported":false}});
-    if info["id"] != app["service_id"] || info["teeReport"] != ad {
-        return Err("Incompatible discovery".into());
-    }
-    Ok(())
-}
 async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
     let started = tokio::time::Instant::now();
     let app: Value = serde_json::from_slice(&read(path, MAX_METADATA)?)?;
@@ -123,14 +116,6 @@ async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
     p.validate()?;
     let bootstrap = client(app["allow_untrusted_bootstrap"].as_bool().unwrap_or(false))?;
     let public = client(false)?;
-    let info: Value = serde_json::from_slice(
-        &body(
-            bootstrap.get(origin.join("/service-info")?).send().await?,
-            MAX_METADATA,
-        )
-        .await?,
-    )?;
-    validate_info(&info, &app)?;
     let nonce: [u8; 32] = rand::random();
     let response = bootstrap
         .post(origin.join("/tee-report")?)
@@ -170,7 +155,10 @@ async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
             p.reference.repository, p.reference.path, p.reference.commit
         ))
         .header("Accept", "application/vnd.github.raw+json")
-        .header("User-Agent", concat!("confido-caller/", env!("CARGO_PKG_VERSION")));
+        .header(
+            "User-Agent",
+            concat!("confido-caller/", env!("CARGO_PKG_VERSION")),
+        );
     if let Ok(token) = std::env::var("CONFIDO_TRS_TOKEN") {
         request = request.bearer_auth(token)
     }
@@ -179,7 +167,7 @@ async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
         return Err("Challenge deadline expired".into());
     }
     Ok((
-        json!({"schema_version":2,"mode":"live_collection","origin":origin.as_str(),"service_info":info,"inputs":{"report":base64::encode(report),"amd_chain":base64::encode(chain),"vcek":base64::encode(vcek),"reference":base64::encode(reference)},"context":{"expected_nonce_base64":base64::encode(nonce),"evaluation_unix_seconds":now()?}}),
+        json!({"schema_version":2,"mode":"live_collection","origin":origin.as_str(),"inputs":{"report":base64::encode(report),"amd_chain":base64::encode(chain),"vcek":base64::encode(vcek),"reference":base64::encode(reference)},"context":{"expected_nonce_base64":base64::encode(nonce),"evaluation_unix_seconds":now()?}}),
         policy,
     ))
 }

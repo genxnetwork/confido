@@ -54,8 +54,8 @@ own compatibility rules.
 | `client/` | Evidence retrieval, offline verification and replay | Split caller/verification ownership during extraction |
 | `extension/` | Browser caller with local WASM verification | Confido consumer |
 
-The native chat transport belongs to `confidential-ai-example`. ServiceInfo and
-Flint retain their own repository histories. New integration results must identify
+The native chat transport belongs to `confidential-ai-example`. Flint retains
+its own repository history. New integration results must identify
 the actual revisions used; historical cross-repository reports are not current
 acceptance evidence.
 
@@ -81,8 +81,8 @@ access policy and a separate claim boundary.
 
 The code checkpoint is `224b374783bc0301d2e8a118fb801ad7d5817eb5` (2026-11-23).
 It is a local revision checkpoint, not the final extraction/release checkpoint R.
-The [validation record](revision/validation-0.2-20261123.json) identifies source
-fingerprints, artifact hashes, dependency versions and downstream dirty trees.
+The earlier validation record is available in Git history at `ec49a75` and
+identifies source fingerprints, artifact hashes, dependency versions and downstream dirty trees.
 All five imported JAN remote branch tips, the local Docker/dmesg branch tips and
 the preserved review series are ancestors. Ancestry preserves research history;
 it does not include unsupported GPU/container/diagnostic claims in the verifier.

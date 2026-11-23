@@ -1,6 +1,8 @@
 # Claim → code → test matrix
 
-Observed implementation run: **2026-09-23**. See [results](results.md) and the [machine-readable run record](run-20260923.json). “Tested” refers to this bounded revision; it does not imply independent review or public deployment promotion.
+The earlier implementation run is retained in Git history. The direct endpoint
+flow has unit and local browser checks; a fresh hardware acceptance run is still
+required before public deployment promotion.
 
 | Claim | Code / artifact | Retained test evidence | Status |
 |---|---|---|---|
@@ -11,14 +13,14 @@ Observed implementation run: **2026-09-23**. See [results](results.md) and the [
 | Exact IMA reference, boot aggregate and PCR 10 | `trs.rs`, `evidence.rs` | replay/enrolled-PCR tests; match and deliberate mismatch through the same verifier | implemented and tested |
 | Immutable reference identity and content | `appraisal.rs` | commit/path/digest pinning; reference/origin substitution rejection | implemented and tested |
 | Typed stages and offline historical replay | `appraisal.rs`, `pylib.rs`, result schema | 21 replay cases; seven observed result records schema-validated; offline admission always false | implemented and tested |
-| Origin-scoped HTTPS, intended hostname and unchanged critical metadata | `AppraisedClient`, `AttestedSession` | shared-certificate cross-origin rejection, wrong hostname, changed identity, redirect/downgrade tests | implemented and tested |
-| Withhold application credentials/traffic before required checks | chat client and Rust transport | 12 installed-wheel tests, 5 chat tests, actual staged counters: 18 discovery/report requests with zero application credentials | implemented and tested |
-| Versioned GA4GH discovery and report contract | sidecar handler/schema; report server | Go tests; both observed advertisements validated against frozen GA4GH v1 + extension; negative schema cases | implemented and tested |
+| Origin-scoped HTTPS and intended hostname | `AppraisedClient`, `Session` | shared-certificate cross-origin rejection, wrong hostname, redirect/downgrade tests; direct endpoint hardware rerun pending | implemented; hardware rerun pending |
+| Withhold application credentials/traffic before required checks | chat client and Rust transport | unit tests require verified evidence and a credentialless HEAD probe before credentials; hardware rerun pending | implemented; hardware rerun pending |
+| Direct challenge-bound report endpoint | collector, CLI, Python caller and browser extension | POST nonce/body, no-store and HEAD 204 checks; hardware rerun pending | implemented; hardware rerun pending |
 | Bounded HTTP/KDS/TPM resource use | `kds.rs`, report handler | oversized input, KDS retry limit, busy collector and malformed nonce tests; isolated hardware collection | implemented and tested |
 | Consistent quote/PCR/log snapshots with three attempts | `gather_evidence`, `verify_quote_snapshot` | real stable snapshots and rejected cryptographic mutations; retry logic reviewed; no adversarial live IMA mutation injected | implemented but live race injection not demonstrated |
 | Frozen installed wheel/container match and mismatch | local wheel, hashed requirements, saved OCI image | actual SDK request through each accepted path; zero application requests for both mismatch paths | implemented and tested |
 | Local appraisal p95 below provisional 3-second target | release wheel with all inputs local | 30 repeated hardware-bundle appraisals; observed p95 2.32 ms; collection/KDS timing recorded separately | implemented and tested for this workload |
-| Public 0.3.0 deployment promotion | aligned templates and preflight | running configuration/binary hashes still match checkpoint | planned; staged revision only |
+| Public 0.2.0 deployment promotion | aligned templates and preflight | direct endpoint hardware rerun and deployed configuration review pending | planned; local revision only |
 | TLS session binding / relay resistance | no binder | none | unsupported |
 | Full application/model/GPU measurement or external inference validation | current IMA log lacks this coverage | enrolled log: 1 boot aggregate + 46 kernel modules; test downstream explicitly synthetic | unsupported |
 | Server-enforced capabilities / continuous trust epochs / restoration | roadmap | none | planned |

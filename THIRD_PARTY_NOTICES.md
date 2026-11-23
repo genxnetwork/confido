@@ -6,8 +6,6 @@ replace the licences, copyright notices, or attribution requirements of dependen
 ## Preserved source material
 
 - `azure-cvm-tooling` / `az-snp-vtpm`, pinned commit `9c6bff6c959994da280f8b3b5bad62a1600063d0`: Microsoft/Kinvolk, MIT licence. `server/src/collector.rs` retains the Microsoft copyright/MIT notice; Confido modifications add multi-bank collection and expose the quote data used by the verifier. [Preserved upstream licence](third_party/azure-cvm-tooling-LICENSE).
-- GA4GH Service Info schema v1.0.0: Apache 2.0, as declared in the preserved schema. Exact source and SHA-256 are recorded in `schemas/provenance.json`; its licence is preserved in `schemas/GA4GH-LICENSE`.
-- The sibling Service Info sidecar and chat example retain their own existing licence files. They are separate components; reuse does not assign their licence to Confido.
 - Cargo lockfiles identify additional Rust dependencies. The current verifier wheel has no TPM2-TSS or OpenSSL runtime dependency; the native collector has its own dependency set. Dependencies retain their authors' terms.
 
 ## Dependencies included in binary releases

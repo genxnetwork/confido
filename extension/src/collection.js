@@ -1,5 +1,5 @@
-import {SERVICES} from './config.js';
-export const ORIGINS = SERVICES.map(service => service.origin);
+export {ORIGINS} from './config.js';
+import {ORIGINS} from './config.js';
 export const DATA_ORIGINS = ['https://kdsintf.amd.com', 'https://api.github.com'];
 export const decode = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
 export function encode(bytes) {let text = ''; for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192)); return btoa(text);}
@@ -25,15 +25,12 @@ async function kds(url, signal) {
     }
   }
 }
-export async function collect(endpoint, serviceId, policyBytes, rpc) {
+export async function collect(endpoint, policyBytes, rpc) {
   if (!ORIGINS.includes(endpoint)) throw Error('Unconfigured evidence origin');
   const policy = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(policyBytes)), ref = policy.reference;
   if (policy.schema_version !== 2 || policy.profile !== 'azure-snp-vtpm-ima/1' || !/^[\w.-]+\/[\w.-]+$/.test(ref?.repository) || !/^[a-f0-9]{40}$/.test(ref?.commit) || !ref.path.split('/').every(s => /^[\w.-]+$/.test(s) && !['.', '..'].includes(s))) throw Error('Invalid immutable local policy');
   const controller = new AbortController(), signal = controller.signal, timer = setTimeout(() => controller.abort(), 120000);
   try {
-    const discovery = await fetchBytes(endpoint + '/service-info', {limit: 65536, signal});
-    const info = JSON.parse(new TextDecoder().decode(discovery.bytes)), a = info.teeReport;
-    if (info.id !== serviceId || !serviceId || a?.profile !== policy.profile || a.wireVersion !== 1 || a.endpoint !== '/tee-report' || a.method !== 'POST' || a.nonce?.name !== 'nonce' || a.nonce.in !== 'body' || a.nonce.encoding !== 'base64' || a.nonce.sizeBytes !== 32 || a.response?.evidenceField !== 'evidence' || a.response.certificateField !== 'certificate' || a.sessionBinding?.supported !== false) throw Error('Incompatible discovery');
     const nonce = crypto.getRandomValues(new Uint8Array(32));
     const report = await fetchBytes(endpoint + '/tee-report', {body: {nonce: encode(nonce)}, signal});
     if (!report.headers.get('cache-control')?.split(',').some(s => s.trim().toLowerCase() === 'no-store')) throw Error('Missing no-store');
@@ -49,6 +46,6 @@ export async function collect(endpoint, serviceId, policyBytes, rpc) {
     const input = {report: report.bytes, amd_chain: chain.bytes, vcek: vcek.bytes, reference: reference.bytes, policy: policyBytes, nonce, at: Math.floor(Date.now() / 1000)};
     const result = await rpc('verify', input);
     if (signal.aborted || result.expected_nonce_base64 !== encode(nonce)) throw Error('Challenge expired/mismatched');
-    return {schema_version: 2, mode: 'live_collection', origin: endpoint, service_info: info, inputs: Object.fromEntries(['report', 'amd_chain', 'vcek', 'reference'].map(k => [k, encode(input[k])])), context: {expected_nonce_base64: encode(nonce), evaluation_unix_seconds: input.at}, verification: result};
+    return {schema_version: 2, mode: 'live_collection', origin: endpoint, inputs: Object.fromEntries(['report', 'amd_chain', 'vcek', 'reference'].map(k => [k, encode(input[k])])), context: {expected_nonce_base64: encode(nonce), evaluation_unix_seconds: input.at}, verification: result};
   } finally {clearTimeout(timer); controller.abort();}
 }

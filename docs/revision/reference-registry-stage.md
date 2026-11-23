@@ -4,6 +4,8 @@ This document records the Confido verifier acceptance performed during the
 revision. The active Genoa stage policies, issuer decision and enrollment tool
 are owned by `confidential-ai-example`; see its
 `docs/genoa-stage-reference.md` for current rerun instructions.
+The earlier live result predates the direct endpoint flow and does not validate
+the revised deployment routing or credentialless TLS peer probe.
 
 The public [Teraveri registry](https://github.com/teraveri/reference-value-registry)
 holds the exact reference bytes and a manifest describing their scope. GENXT
@@ -103,7 +105,6 @@ manual issuer decision in a new JAN policy review.
 
    ```bash
    ../confidential-ai-example/.venv/bin/python ../confidential-ai-example/scripts/stage_demo.py \
-     --sidecar /tmp/ga4gh-service-info \
      --out /private/new-genoa-stage-run \
      --match-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage.json \
      --mismatch-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage-mismatch.json

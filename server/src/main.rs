@@ -427,6 +427,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     )
                 }),
             )
+            .route(
+                "/tee-report",
+                web::head().to(|| async { HttpResponse::NoContent().finish() }),
+            )
     })
     .bind(host_port)?
     .run()

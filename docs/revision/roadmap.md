@@ -11,7 +11,7 @@
 | TPM/OpenHCL unwrap/unseal | authenticated AK/report context | guest/key manager; measured policy, sealed key custody, capability-aware release |
 | Guix reproduction | source/lock/config/artifact identifiers | build system and reference enrollment; bit-identical audited builds and measurement correspondence |
 | OPNsense integration | stable appraisal reason codes and evidence API | network policy controller; enforcement and attester-to-flow identity |
-| GA4GH TES/WES/SDK integration | ServiceInfo advertisement and origin-scoped Rust/Python API | relying-party SDK/service adapters; workload identity, user consent and operation admission |
+| Service and SDK integration | direct report endpoint and origin-scoped Rust/Python API | relying-party SDK/service adapters; workload identity, user consent and operation admission |
 | SOC/GRC integration | redacted result schema, evidence digests and run records | audit adapters and retention policy; identity, access controls and external evidence review |
 
 RFC 9261 is a standard; the remote-attestation SEAT integration remains draft work. No IETF consensus on a completed attestation profile or existing local BoringSSL integration is implied. A JSON declaration and certificate hash provide no TLS exporter context.

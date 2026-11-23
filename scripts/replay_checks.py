@@ -68,7 +68,6 @@ def main():
     run("reference_content", lambda b,c: b.update(reference_json=b["reference_json"]+" "), "reference_digest_mismatch")
     run("reference_identity", lambda b,c: b["reference"].update(commit="0"*40), "reference_match")
     run("origin_substitution", lambda b,c: b.update(origin="https://other.invalid"), "reference_match")
-    run("service_identity", lambda b,c: b["service_info"].update(id="other"), "reference_match")
     run("unsupported_wire", lambda b,c: b["report"].update(wireVersion=2), "unsupported_wire_version")
     run("untrusted_root", lambda b,c: c["platform"].update(ark_sha256="0"*64), "endorsement_chain_invalid")
     run("launch_policy", lambda b,c: c["platform"].update(launch_measurement="0"*96), "platform_policy_mismatch")

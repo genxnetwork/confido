@@ -32,6 +32,9 @@ flowchart LR
 
 The chat application's native TLS transport lives in the sibling
 `confidential-ai-example/native_transport`, independently of this library.
+The collector accepts a fresh challenge at `POST /tee-report`; `HEAD /tee-report`
+returns 204 for a credentialless TLS peer check. Callers select the HTTPS origin
+and verifier policy locally. The report endpoint does not choose trust anchors.
 
 ## Build and test
 
@@ -110,8 +113,9 @@ preserved in schema v2. CLI accepts legacy archives through its caller-side adap
 
 See [extension build and install](extension/README.md). Verification runs entirely
 inside its packaged WASM worker, with no native helper or remote verifier.
-Live retrieval is limited to the two configured demo origins plus AMD KDS and
-GitHub. Local replay does not need host permissions. Safari packaging requires
+Live retrieval uses only origins explicitly supplied at build time, plus AMD KDS
+and GitHub. Without an origin list, the extension supports local replay only.
+Local replay does not need host permissions. Safari packaging requires
 macOS/Xcode and is not certified by Linux browser tests.
 
 ## Assurance boundary
@@ -130,9 +134,9 @@ profile, not general-purpose PKIX path discovery.
 
 See the [0.2 revision plan and validation](docs/revision-0.2.md),
 [migration guide](docs/migration-0.2.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
-The [earlier design](docs/design/evidence-verifier-0.4.md) and historical
-`docs/revision/` and `docs/design/` validation reports describe their recorded
-snapshots. Their 0.3/0.4 labels and old test results are retained as history.
+Earlier design and validation records remain available in Git history at
+`ec49a75`. They describe older deployment snapshots and are not acceptance
+evidence for the direct report endpoint.
 
 ## Origin and licence
 

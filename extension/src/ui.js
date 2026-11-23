@@ -1,17 +1,11 @@
 import {collect, decode, ORIGINS, DATA_ORIGINS} from './collection.js';
-import {SERVICES} from './config.js';
 const $ = id => document.getElementById(id); let busy = false, record;
-for (const service of SERVICES) {
+for (const origin of ORIGINS) {
   const option = document.createElement('option');
-  option.value = service.origin; option.textContent = service.origin;
+  option.value = origin; option.textContent = origin;
   $('origin').append(option);
 }
-function selectService() {
-  $('service').value = SERVICES.find(service => service.origin === $('origin').value)?.service_id ?? '';
-}
-$('origin').addEventListener('change', selectService);
-selectService();
-$('live').disabled = SERVICES.length === 0;
+$('live').disabled = ORIGINS.length === 0;
 function workerRpc() {
   const worker = new Worker(new URL('./worker.js', import.meta.url), {type: 'module'}), pending = new Map(); let seq = 0;
   worker.onmessage = ({data}) => {const task = pending.get(data.id); if (!task) return; clearTimeout(task.timer); pending.delete(data.id); data.error ? task.reject(Error(data.error)) : task.resolve(data.result);};
@@ -26,7 +20,7 @@ async function run(operation) {
       const endpoint = $('origin').value; if (!ORIGINS.includes(endpoint)) throw Error('Unconfigured evidence service');
       if (!await chrome.permissions.request({origins: [endpoint, ...DATA_ORIGINS].map(o => o + '/*')})) throw Error('Retrieval permission was declined');
       await rpc.call('metadata', {});
-      record = await collect(endpoint, $('service').value, await file('policy', 65536), rpc.call);
+      record = await collect(endpoint, await file('policy', 65536), rpc.call);
     } else {
       await rpc.call('metadata', {});
       const policy = await file('policy', 65536), archive = JSON.parse(new TextDecoder().decode(await file('archive', 16777216)));

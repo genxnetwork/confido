@@ -17,9 +17,6 @@
     "origin": {
       "type": "string"
     },
-    "service_info": {
-      "type": "object"
-    },
     "inputs": {
       "type": "object",
       "properties": {

@@ -12,7 +12,7 @@ python3 extension/build.py --browser chromium
 python3 extension/build.py --browser firefox
 python3 extension/build.py --browser safari
 # Optional GENXT live-demo build, using application-owned host configuration:
-python3 extension/build.py --browser chromium --services-config ../confidential-ai-example/deploy/genxt-demo/extension-services.json
+python3 extension/build.py --browser chromium --origins-config ../confidential-ai-example/deploy/genxt-demo/extension-origins.json
 ```
 
 Run from the repository root with clang installed. Outputs are under
@@ -26,11 +26,11 @@ CSP permits WASM compilation and forbids remotely hosted scripts.
   and build/sign the generated Xcode project. Native packaging is required by
   Safari; the verifier itself remains WASM. Safari acceptance is pending macOS.
 
-Without `--services-config`, the extension supports local historical replay.
-For live collection, supply an approved service list at build time and select
+Without `--origins-config`, the extension supports local historical replay.
+For live collection, supply an approved origin list at build time and select
 a caller-owned verifier policy, such as the adjacent
 `confidential-ai-example/profiles/verifier-match.json`. The build places only
-those configured service origins in the optional host permissions and runtime
+those configured origins in the optional host permissions and runtime
 allowlist. The extension does not infer trust policy from the service.
 Replay requires a v2 archive and an explicit evaluation timestamp; old embedded
 results are ignored and all raw inputs are reverified. Convert v1 archives with
