@@ -1,6 +1,6 @@
 # Genoa stage reference enrollment
 
-The public [Teraveri registry](https://github.com/teraveri/attestation-references)
+The public [Teraveri registry](https://github.com/teraveri/reference-value-registry)
 holds the exact reference bytes and a manifest describing their scope. GENXT
 endorses the manifest from its own
 [`confido-trusted-repository`](https://github.com/genxnetwork/confido-trusted-repository)
@@ -17,7 +17,7 @@ and a new entry rather than changing a pinned reference.
 ## Publication sequence
 
 1. Create the **empty public** repository
-   `teraveri/attestation-references` and push the prepared local registry
+   `teraveri/reference-value-registry` and push the prepared local registry
    `main` branch. Keep its initial commit ID unchanged, because the GENXT
    request names that commit.
 2. Review and merge the GENXT `revision/reference-endorsement` branch into
@@ -35,7 +35,7 @@ and a new entry rather than changing a pinned reference.
 
    ```bash
    python3 scripts/enroll_reference.py \
-     --registry teraveri/attestation-references \
+     --registry teraveri/reference-value-registry \
      --commit FULL_REGISTRY_COMMIT_WITH_BUNDLE \
      --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
      --gh /mnt/tools/gh_2.105.0_linux_amd64/bin/gh \
@@ -48,6 +48,8 @@ and a new entry rather than changing a pinned reference.
    and the observed platform enrollment is
    [`profiles/platform-genoa-stage.json`](../../profiles/platform-genoa-stage.json).
    Revisit the platform values when the VM image or firmware changes.
+   Other publishers use a separate locally approved issuer entry and
+   `--issuer NAME`; the registry cannot add a trusted issuer by itself.
 5. Run the isolated hardware acceptance against the new positive policy and
    the Genoa negative policy, which keeps the same platform enrollment but
    references an older, incompatible IMA baseline:

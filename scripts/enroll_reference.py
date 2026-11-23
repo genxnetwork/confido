@@ -151,6 +151,8 @@ def enroll(registry, commit, entry, issuer_policy, platform, reader, gh, issuer_
         raise ValueError("invalid registry commit")
     if not safe_path(entry) or not entry.startswith("entries/"):
         raise ValueError("invalid entry path")
+    if not isinstance(issuer_name, str) or not SAFE.fullmatch(issuer_name) or issuer_name in (".", ".."):
+        raise ValueError("invalid issuer name")
     if set(issuer_policy) != {"schema_version", "registry_repository", "issuers"} or issuer_policy["schema_version"] != 1 or issuer_policy["registry_repository"] != registry:
         raise ValueError("local issuer policy does not authorize registry")
     matches = [i for i in issuer_policy["issuers"] if i["name"] == issuer_name]
@@ -182,13 +184,14 @@ def enroll(registry, commit, entry, issuer_policy, platform, reader, gh, issuer_
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--registry", default="teraveri/attestation-references")
+    p.add_argument("--registry", default="teraveri/reference-value-registry")
     p.add_argument("--commit", required=True, help="Full registry commit with the manifest and publisher bundle")
     p.add_argument("--entry", required=True, help="entries/<profile>/<environment>")
     p.add_argument("--registry-dir", type=Path, help="Read objects from this trusted local checkout instead of GitHub")
     p.add_argument("--issuer-policy", type=Path, default=Path(__file__).resolve().parents[1] / "profiles/reference-issuers-stage.json")
     p.add_argument("--platform", type=Path, default=Path(__file__).resolve().parents[1] / "profiles/platform-genoa-stage.json")
     p.add_argument("--gh", default=shutil.which("gh") or "gh")
+    p.add_argument("--issuer", default="GENXT", help="Locally trusted publisher name")
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     issuer_policy = parse_json(args.issuer_policy.read_bytes())
@@ -202,7 +205,7 @@ def main():
         reader = lambda path: read_local(args.registry_dir, path)
     else:
         reader = lambda path: fetch(args.registry, args.commit, path)
-    policy = enroll(args.registry, args.commit, args.entry, issuer_policy, platform, reader, args.gh)
+    policy = enroll(args.registry, args.commit, args.entry, issuer_policy, platform, reader, args.gh, args.issuer)
     output = json.dumps(policy, indent=2) + "\n"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(output)
