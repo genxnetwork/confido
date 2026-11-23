@@ -16,14 +16,15 @@ and a new entry rather than changing a pinned reference.
 
 ## Publication sequence
 
-1. Create the **empty public** repository
-   `teraveri/reference-value-registry` and push the prepared local registry
-   `main` branch. Keep its initial commit ID unchanged, because the GENXT
-   request names that commit.
+1. The public registry `teraveri/reference-value-registry` is initialized at
+   `fcf172f378225648d50a69028020b1798b90a0c9`. Keep that commit available:
+   the GENXT request pins its manifest and reference bytes.
 2. Review and merge the GENXT `revision/reference-endorsement` branch into
-   `master`. Protect `master` with pull-request review, CODEOWNERS review,
-   and passing `Test endorsement preparation`. Protect Teraveri `main` with
-   pull-request review, CODEOWNERS review, and passing `Validate references`.
+   `master`. Its branch rules require a pull request, one approval from a
+   collaborator other than the PR author, and the passing `test` check. The
+   Teraveri `main` rules require a pull request and the passing `validate`
+   check; there is currently only one collaborator, so they require no separate
+   approval. Both branches reject force pushes and deletion.
 3. Run GENXT **Endorse reference manifest** on `master` with request ID
    `genoa-stage-1071`. Download the `genxt-reference-endorsement` artifact and
    copy its `genxt.sigstore.json` to the registry entry's `endorsements/`
