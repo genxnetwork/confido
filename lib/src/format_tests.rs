@@ -191,6 +191,83 @@ fn malformed_hcl_never_panics() {
     b[1232..1236].copy_from_slice(&u32::MAX.to_le_bytes());
     assert!(super::hcl(&b).is_err());
 }
+
+#[test]
+fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
+    use openssl::{
+        ec::{EcGroup, EcKey},
+        ecdsa::EcdsaSig,
+        nid::Nid,
+    };
+    let group = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
+    let ec = EcKey::generate(&group).unwrap();
+    let key = PKey::from_ec_key(ec.clone()).unwrap();
+    // This local certificate tests report signature encoding, not AMD trust.
+    let cert_der = certificate(&key, "synthetic SNP signer").to_der().unwrap();
+    let cert = crate::crypto::cert(&cert_der).unwrap();
+    let mut b = vec![0; 1236];
+    b[1224..1228].copy_from_slice(&2u32.to_le_bytes());
+    b[1228..1232].copy_from_slice(&1u32.to_le_bytes());
+    b[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
+    for version in [2u32, 3, 5] {
+        b[32..36].copy_from_slice(&version.to_le_bytes());
+        b[32 + 384..32 + 392].copy_from_slice(&[4, 0, 0, 0, 0, 0, 24, 219]);
+        b[32 + 480..32 + 488].copy_from_slice(&[4, 0, 0, 0, 0, 0, 24, 219]);
+        b[32 + 144..32 + 192].fill(0x11);
+        b[32 + 416..32 + 480].fill(0x22);
+        b[32 + 80..32 + 144].fill(0x33);
+        b[32 + 392] = 0x19;
+        b[32 + 393] = 0x01;
+        let sig = EcdsaSig::sign(&openssl::sha::sha384(&b[32..32 + 672]), &ec).unwrap();
+        for (at, value) in [(672, sig.r()), (744, sig.s())] {
+            let mut le = value.to_vec_padded(48).unwrap();
+            le.reverse();
+            b[32 + at..32 + at + 48].copy_from_slice(&le);
+        }
+        let snp = super::snp(&b).unwrap();
+        assert_eq!(snp.tcb, [4, 0, 24, 219]);
+        assert_eq!(snp.committed, snp.tcb);
+        assert_eq!(snp.measurement, &[0x11; 48]);
+        assert_eq!(snp.chip, &[0x22; 64]);
+        assert_eq!(snp.report_data, &[0x33; 64]);
+        snp.require_milan().unwrap();
+        crate::crypto::snp_signature(&snp, &cert).unwrap();
+        // Version, established fields and v5's new fields are all signed.
+        for offset in [0, 80, 144, 384, 416, 480, 504, 512, 671, 672, 744] {
+            let mut changed = b.clone();
+            changed[32 + offset] ^= 1;
+            assert!(super::snp(&changed)
+                .and_then(|s| crate::crypto::snp_signature(&s, &cert))
+                .is_err());
+        }
+    }
+    for version in [0u32, 1, 4, 6, u32::MAX] {
+        b[32..36].copy_from_slice(&version.to_le_bytes());
+        assert_eq!(
+            super::snp(&b).unwrap_err(),
+            format!("Unsupported SNP report version {version}")
+        );
+    }
+}
+
+#[test]
+fn milan_profile_rejects_other_reported_processors() {
+    let mut b = vec![0; 1236];
+    b[1224..1228].copy_from_slice(&2u32.to_le_bytes());
+    b[1228..1232].copy_from_slice(&1u32.to_le_bytes());
+    b[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
+    for version in [3u32, 5] {
+        b[32..36].copy_from_slice(&version.to_le_bytes());
+        for (family, model) in [(0x19, 0x11), (0x1a, 0x01), (0, 0)] {
+            b[32 + 392] = family;
+            b[32 + 393] = model;
+            assert!(super::snp(&b).unwrap().require_milan().is_err());
+        }
+    }
+    // No CPUID in v2: chain validation must still establish Milan.
+    b[32..36].copy_from_slice(&2u32.to_le_bytes());
+    super::snp(&b).unwrap().require_milan().unwrap();
+}
 #[test]
 fn binding_v1_serialization_matches_existing_vector() {
     let v: serde_json::Value =

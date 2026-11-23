@@ -168,10 +168,7 @@ async fn atls_http_route(
     let evidence = match tokio::time::timeout(Duration::from_secs(20), task).await {
         Ok(Ok(Ok(evidence))) => evidence,
         other => {
-            error!(
-                "Evidence collection failed or exceeded its deadline: {:?}",
-                other.err()
-            );
+            error!("Evidence collection failed or exceeded its deadline: {other:?}");
             return HttpResponse::ServiceUnavailable()
                 .body("Consistent evidence snapshot unavailable");
         }

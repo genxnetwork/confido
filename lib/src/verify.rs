@@ -91,6 +91,7 @@ pub fn inspect_requirements(report_json: &[u8]) -> Result<Requirements, Verifica
     let response: AttestationResponse =
         serde_json::from_slice(report_json).map_err(|e| VerificationError(e.to_string()))?;
     let snp = formats::snp(&response.evidence.report).map_err(VerificationError)?;
+    snp.require_milan().map_err(VerificationError)?;
     Ok(Requirements {
         trusted: false,
         profile: PROFILE.into(),
@@ -201,6 +202,12 @@ fn verify_inner(
         Status::InvalidEvidence,
         "malformed_hcl",
         formats::snp(&response.evidence.report)
+    );
+    check!(
+        Stage::SnpReport,
+        Status::UnsupportedProfile,
+        "unsupported_processor",
+        snp.require_milan()
     );
     let chain = check!(
         Stage::Endorsements,
