@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: teraveri/evidence
-          ref: e8a3a46ca8a156655c60a5b9602467aea15a76c2
+          ref: 8db2a7710c107c3e2f1163e4686292f5feb04e3d
           path: evidence
           persist-credentials: false
       - name: Portable build tools
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: teraveri/evidence
-          ref: e8a3a46ca8a156655c60a5b9602467aea15a76c2
+          ref: 8db2a7710c107c3e2f1163e4686292f5feb04e3d
           path: evidence
           persist-credentials: false
       - name: Native collector prerequisites
