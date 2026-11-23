@@ -30,7 +30,7 @@ on GitHub is a later publication step.
 | Published attestation revision | `28471a04c4af23a4765c4584757685ba56245664` | Direct ancestor of this branch |
 | Licensed JAN/GENXT master | `1faf101bc5595699e2ad37828cad1692a2ae7d71` | Merged with licence packaging retained |
 | Local review series | `4406996`, `0c33604`, `f8a9b2f`, `e0061e0`, `1b33d6e` | Merged with original commit identities |
-| Earlier local rebase | `523b7ff` | Audited against this tree; obsolete ServiceInfo/legacy API changes were not merged. Its historical results are already reachable at `9ecade8` and earlier ancestors. Local branch pointers removed. |
+| Earlier local rebase | `523b7ff` | Audited against this tree; obsolete discovery and legacy API changes were not merged. Its historical results are already reachable at `9ecade8` and earlier ancestors. Local branch pointers removed. |
 | Original research baseline | `2112b49ed248ac40dcdb819b63ea9739d055d138` | Published `origin/archive/research-baseline`; local pointer removed |
 
 The two pre-consolidation stashes were audited: one contains provisional version
@@ -107,7 +107,7 @@ the automated Actions OIDC path remains pending. See the
 
 The removed `revision/0.2` / `backup/pre-jan-consolidation-20261123` line was
 audited before removal. Its 14 unique commits used an earlier API and
-discovery/ServiceInfo flow; merging the line would restore retired behavior.
+discovery flow; merging the line would restore retired behavior.
 Its report, review and checkpoint records remain reachable at `9ecade8`.
 Reusable SNP/HCL/quote/PCR/IMA and origin checks have current equivalents.
 The active replay harness was corrected to mutate actual schema-v2 archive
