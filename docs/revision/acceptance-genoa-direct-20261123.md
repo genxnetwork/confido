@@ -46,7 +46,32 @@ Python, CLI, Chromium and Firefox returned identical results for seven cases;
 the Chromium MV3 worker, CSP, replay and stale-asset rejection checks passed.
 
 This is a local, synthetic downstream acceptance. It does not evaluate external
-inference, public deployment, container packaging, independent review, TLS
+inference, public deployment, independent review, TLS
 session binding, or application/model/GPU state. The GENXT publisher path remains
 the explicitly pinned manual stage statement, not a completed Actions OIDC
 endorsement.
+
+## Current container rerun
+
+After the direct-endpoint code and documentation commits, the application at
+`b752fc6d1daad467dea67a32bc4622d6049bb74e` rebuilt both wheels and the
+`confidential-ai-example:0.4.0` image. The image digest is
+`sha256:e2fa324ecbd841fbbf9aaa24a5ce1109e363a76e53acc1446b858dfabc9c0528`.
+The local build manifest SHA-256 is
+`c0e72b8e364b234e1420d1d289178d639f53bcb5bab479d9dbd6e514660042a4`;
+it records a clean application source tree, locked Python dependencies and
+the embedded source fingerprints. The rebuilt verifier and transport wheel
+SHA-256 values are respectively
+`f95812ed06249a77fb8a0551cfb4cb790ebd26a334e9245455cc92eb599ebb36`
+and `cb270dba03be6d4295822f623ce2455c8e6a3afba68f6476c55627b814885518`.
+These are distinct package artifacts from the first run; their native binary
+hashes and source fingerprints matched the earlier runtime manifest.
+
+The isolated rerun completed from `2026-11-23T18:41:44.140457+00:00` to
+`2026-11-23T18:42:03.071128+00:00`. The installed-wheel and container match
+cases each made one synthetic application request; both mismatch cases made
+zero. Shared-certificate cross-origin and wrong-host rejections still passed.
+All nine `/tee-report` requests used zero application credentials. The private
+container-run `acceptance.json` SHA-256 is
+`0b042c1baa82a47fe967296beb01f9f25947c4f92abcf7ac95bb67e7415e910c`.
+The exact image is held locally; no registry image was published.

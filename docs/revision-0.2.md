@@ -94,6 +94,7 @@ the [Genoa direct-endpoint acceptance](revision/acceptance-genoa-direct-20261123
 | Core and WASM dependency guard | Passed; no TPM/network/TLS runtime |
 | Current Genoa match/mismatch on direct endpoint | All 12 stages passed for match; negative reference rejected with zero application requests |
 | Native transport | Shared-certificate cross-origin and wrong-host rejection passed; six evidence requests used zero application credentials |
+| Current frozen container | Rebuilt image `sha256:e2fa324e…` passed match/mismatch through the direct endpoint; nine evidence requests carried zero application credentials |
 | Current Genoa archive replay | 27 cases passed; 30 local appraisals p95 3.93 ms, excluding collection/network |
 | CLI / Python / Chromium / Firefox parity | Identical results for seven cases in each runtime |
 | Installed Chromium MV3 | Worker, CSP, replay and stale-asset checks passed |
@@ -102,8 +103,8 @@ the [Genoa direct-endpoint acceptance](revision/acceptance-genoa-direct-20261123
 
 The fresh run used isolated listeners and a synthetic downstream responder. It
 did not modify public service configuration or exercise external inference.
-The verifier wheel and server binary were recorded by hash; a current container
-run, Safari runtime, independent reproduction and public deployment promotion
+The verifier wheel, server binary and local container image were recorded by
+hash; Safari runtime, independent reproduction and public deployment promotion
 remain open. The manual GENXT stage endorsement is explicitly pinned; normal
 GENXT Actions OIDC publication remains blocked by its required CI job. Previous
 Milan archives and the 1068-kernel checkpoint remain historical evidence in
@@ -120,8 +121,7 @@ the old top-level mutations were ineffective on current archives. Its v1
 migration path also passed the same 27 cases on a v1-shaped copy of the fresh
 Genoa bundle.
 
-Before checkpoint R: review release packaging/attribution, run the frozen
-container against the direct endpoint, and obtain independent acceptance if
+Before checkpoint R: review release packaging/attribution and obtain independent acceptance if
 required for publication. Then record R and extract Attestor with shared
 history. GitHub issue/PR, pushes, tags and package publication remain
 outstanding. Historical reports under `docs/revision/` and `docs/design/`

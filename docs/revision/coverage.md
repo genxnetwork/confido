@@ -20,7 +20,7 @@ deployment or external inference.
 | Bounded collection and retrieval | `server/src/main.rs`; application `demo/collection.py` | 7 server tests, 7 launcher tests, application retry/size tests | implemented; adversarial live IMA race not injected |
 | Python, CLI and browser verifier parity | `bindings/`, `extension/`, `scripts/browser_checks.py` | seven current-hardware cases per runtime; installed Chromium MV3/CSP/asset checks | implemented; Safari runtime not accepted |
 | Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 current Genoa replays, p95 3.93 ms; network excluded | observed for this workload only |
-| Frozen container on the direct endpoint | application Docker build and runtime manifest | earlier container acceptance predates direct endpoint | pending current container rerun |
+| Frozen container on the direct endpoint | application Docker build and runtime manifest | current Genoa match/mismatch in both installed wheel and rebuilt local image; image digest in acceptance record | implemented and locally accepted |
 | Public 0.2.0 deployment promotion | application-owned `deploy/genxt-demo/` and preflight | current run used isolated localhost listeners | pending public configuration review and promotion |
 | TLS session binding / relay resistance | no binder | none | unsupported |
 | Full application/model/GPU measurement or external inference validation | current IMA log lacks this coverage | enrolled log: one boot aggregate + 44 kernel modules; downstream synthetic | unsupported |
