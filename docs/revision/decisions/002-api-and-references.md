@@ -6,7 +6,7 @@ Collection and pure appraisal are separate. Frozen bundles contain evidence, pub
 
 Results carry ordered checks, stable reason codes and distinct invalid-evidence, policy-mismatch, unsupported-profile and dependency-unavailable statuses. They also carry fingerprints, reference identity, coverage, bindings, timings and limitations. The result is not a signed remote attestation result.
 
-Confido 0.2.0 exposes the pure verification API. Legacy `aTLS_connect*` entry points remain historical compatibility APIs with narrower checks and do not imply conformance to the current profile. The demo and revised CLI use the pure API. Rust does not require Python or WASM dependencies; the wheel enables the `python` feature. Linux x86_64 / CPython 3.10 is the frozen demonstration target.
+Confido 0.2.0 exposes the pure verification API. Legacy `aTLS_connect*` entry points were removed from the current library; callers must migrate to the explicit verification result and manage transport admission separately. The demo and revised CLI use the pure API. Rust does not require Python or WASM dependencies; the wheel enables the `python` feature. Linux x86_64 / CPython 3.10 is the frozen demonstration target.
 
 ## Digest definitions
 

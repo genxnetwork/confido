@@ -1,34 +1,35 @@
 # Claim → code → test matrix
 
-The earlier implementation run is retained in Git history. The direct endpoint
-flow has unit and local browser checks; a fresh hardware acceptance run is still
-required before public deployment promotion.
+Earlier implementation runs remain in Git history. The current direct-endpoint
+Genoa run is recorded in [the acceptance record](acceptance-genoa-direct-20261123.md).
+It tested an isolated local route and synthetic downstream responder, not public
+deployment or external inference.
 
 | Claim | Code / artifact | Retained test evidence | Status |
 |---|---|---|---|
-| Pinned AMD root, endorsement signatures/validity and VCEK chip/TCB/product correspondence | `lib/src/profile.rs`, `appraisal.rs` | real hardware acceptance; root/chip/date mutations in `replay-checks.json` | implemented and tested |
-| SNP signature, HCL variable-data binding and recovered vTPM AK | `evidence.rs`, `profile.rs` | SNP-signature/HCL-AK substitutions; genuine fresh collection | implemented and tested |
-| Explicit debug/migration/VMPL, launch measurement and minimum TCB policy | `profile.rs`, `confidential-ai-example/profiles/*.json` | direct policy vectors; valid hardware evidence rejected under incompatible launch/TCB policy | implemented and tested |
-| Signed quote, nonce/certificate/log binding, PCR bank/selection | `quote.rs`, `nonce.rs`, `vtpm.rs` | RSA-signed fixture mutations, independent transcript vector, live quote, hardware replay mutations | implemented and tested |
-| Exact IMA reference, boot aggregate and PCR 10 | `trs.rs`, `evidence.rs` | replay/enrolled-PCR tests; match and deliberate mismatch through the same verifier | implemented and tested |
-| Immutable reference identity and content | `appraisal.rs` | commit/path/digest pinning; reference/origin substitution rejection | implemented and tested |
-| Typed stages and offline historical replay | `appraisal.rs`, `pylib.rs`, result schema | 21 replay cases; seven observed result records schema-validated; offline admission always false | implemented and tested |
-| Origin-scoped HTTPS and intended hostname | `AppraisedClient`, `Session` | shared-certificate cross-origin rejection, wrong hostname, redirect/downgrade tests; direct endpoint hardware rerun pending | implemented; hardware rerun pending |
-| Withhold application credentials/traffic before required checks | chat client and Rust transport | unit tests require verified evidence and a credentialless HEAD probe before credentials; hardware rerun pending | implemented; hardware rerun pending |
-| Direct challenge-bound report endpoint | collector, CLI, Python caller and browser extension | POST nonce/body, no-store and HEAD 204 checks; hardware rerun pending | implemented; hardware rerun pending |
-| Bounded HTTP/KDS/TPM resource use | `kds.rs`, report handler | oversized input, KDS retry limit, busy collector and malformed nonce tests; isolated hardware collection | implemented and tested |
-| Consistent quote/PCR/log snapshots with three attempts | `gather_evidence`, `verify_quote_snapshot` | real stable snapshots and rejected cryptographic mutations; retry logic reviewed; no adversarial live IMA mutation injected | implemented but live race injection not demonstrated |
-| Frozen installed wheel/container match and mismatch | local wheel, hashed requirements, saved OCI image | actual SDK request through each accepted path; zero application requests for both mismatch paths | implemented and tested |
-| Local appraisal p95 below provisional 3-second target | release wheel with all inputs local | 30 repeated hardware-bundle appraisals; observed p95 2.32 ms; collection/KDS timing recorded separately | implemented and tested for this workload |
-| Public 0.2.0 deployment promotion | aligned templates and preflight | direct endpoint hardware rerun and deployed configuration review pending | planned; local revision only |
+| Pinned AMD root, endorsement signatures/validity and VCEK chip/TCB/product correspondence | `lib/src/{crypto,formats,verify}.rs` | Rust tests, 27 replay cases and fresh Genoa evidence | implemented for Milan/Genoa; revocation is not automatic |
+| SNP signature, HCL variable-data binding and recovered vTPM AK | `lib/src/{crypto,formats,verify}.rs` | signed-report and HCL-key mutations; live Genoa run | implemented and tested |
+| Debug/migration/VMPL, launch measurement and minimum TCB policy | `lib/src/verify.rs`; application-owned `profiles/*.json` | policy mutations in replay and live Genoa enrollment | implemented and tested for enrolled baseline |
+| Signed quote, nonce/certificate/log binding and PCR mapping | `protocol/src/lib.rs`, `lib/src/formats.rs` | signed fixture vectors, challenge/quote/PCR mutations and fresh TPM quote | implemented and tested |
+| Exact IMA reference, boot aggregate and PCR 10 | `lib/src/{reference,verify}.rs` | Rust tests, replay mutations and fresh match/mismatch | implemented for 45 enrolled boot/module entries |
+| Immutable reference content and locally selected identity | `lib/src/verify.rs`; application `demo/collection.py`, `scripts/enroll_reference.py` | commit/path/digest pinning, publisher verification and live Teraveri retrieval | implemented for approved local policy |
+| Typed evidence result and historical replay | `lib/src/result.rs`, `bindings/{python,wasm}/`, `client/`, result/archive schemas | Python API tests, 27 replay cases, seven-case CLI/Python/Chromium/Firefox parity | implemented; no admission claim in result |
+| Origin-scoped HTTPS and intended hostname | application `native_transport/`, `demo/admission.py` | transport tests and live shared-certificate/wrong-host rejection | implemented in cooperating native application |
+| Withhold credentials and application traffic until admission | application `demo/`, `confai-promter.py` | 38 application tests; live match sent one synthetic request, mismatch sent zero | implemented in cooperating native application |
+| Direct challenge-bound report endpoint | `server/src/main.rs`, `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; fresh Genoa run | implemented and locally accepted |
+| Bounded collection and retrieval | `server/src/main.rs`; application `demo/collection.py` | 7 server tests, 7 launcher tests, application retry/size tests | implemented; adversarial live IMA race not injected |
+| Python, CLI and browser verifier parity | `bindings/`, `extension/`, `scripts/browser_checks.py` | seven current-hardware cases per runtime; installed Chromium MV3/CSP/asset checks | implemented; Safari runtime not accepted |
+| Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 current Genoa replays, p95 3.93 ms; network excluded | observed for this workload only |
+| Frozen container on the direct endpoint | application Docker build and runtime manifest | earlier container acceptance predates direct endpoint | pending current container rerun |
+| Public 0.2.0 deployment promotion | application-owned `deploy/genxt-demo/` and preflight | current run used isolated localhost listeners | pending public configuration review and promotion |
 | TLS session binding / relay resistance | no binder | none | unsupported |
-| Full application/model/GPU measurement or external inference validation | current IMA log lacks this coverage | enrolled log: 1 boot aggregate + 46 kernel modules; test downstream explicitly synthetic | unsupported |
+| Full application/model/GPU measurement or external inference validation | current IMA log lacks this coverage | enrolled log: one boot aggregate + 44 kernel modules; downstream synthetic | unsupported |
 | Server-enforced capabilities / continuous trust epochs / restoration | roadmap | none | planned |
 | Independent evaluator reproduction | rerun checklist | non-implementer identity/sign-off pending | planned |
 
 ## Remaining decisions and assumptions
 
-- Confido licence metadata remains an owner decision before an open release; upstream notices are preserved.
+- Repository and package metadata declare Apache-2.0; third-party attribution and release artifacts still need final review before publication.
 - AMD revocation and security-advisory updates are not automatic. The minimum TCB and launch measurement are operator-enrolled baselines.
 - Guest collector behavior, TLS key custody, enrollment integrity and post-appraisal changes remain assumptions. A fresh quote does not prove a newly generated SNP report.
 - The public demonstration's external inference is outside the measured boundary; admission is enforced by a cooperating client.
