@@ -7,9 +7,8 @@ from pathlib import Path
 
 
 def files(root, scope):
-    evidence = root.parent / "evidence"
     scopes = {
-        "core": [root / "lib", evidence / "protocol", evidence / "core"],
+        "core": [root / "lib"],
         "python": [root / "bindings/python"],
         "wasm": [root / "bindings/wasm"],
         "cli": [root / "client"],
@@ -17,8 +16,6 @@ def files(root, scope):
     paths = {
         root / "scripts/source_fingerprint.py",
         root / "build_support.rs",
-        evidence / "Cargo.toml",
-        evidence / "Cargo.lock",
     }
     directories = []
     for base in scopes[scope]:
@@ -33,9 +30,6 @@ def files(root, scope):
                 "pyproject.toml",
                 "Makefile",
             )
-            # Workspace members share ../evidence/Cargo.lock. A transient lockfile
-            # created by a standalone member command is not a build input.
-            if not (base.is_relative_to(evidence) and name == "Cargo.lock")
             if (base / name).is_file()
         )
     return sorted(paths), directories
@@ -44,8 +38,8 @@ def files(root, scope):
 def fingerprint(root, scope):
     digest = hashlib.sha256()
     for path in files(root, scope)[0]:
-        # Relative labels keep the digest independent of the checkout's
-        # absolute location, including the adjacent evidence repository.
+        # Cargo.lock pins the git-sourced Evidence commit. Relative labels keep
+        # the digest independent of the checkout's absolute location.
         name = os.path.relpath(path, root).replace(os.sep, "/").encode()
         data = path.read_bytes()
         digest.update(

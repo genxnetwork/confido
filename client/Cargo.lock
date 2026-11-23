@@ -108,7 +108,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "confido_client"
+name = "confido-cli"
 version = "0.2.0"
 dependencies = [
  "base64 0.13.1",
@@ -191,6 +191,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "evidence-core"
 version = "0.2.0"
+source = "git+https://github.com/teraveri/evidence?rev=900d420b0928c4693e1143aa33a33ab670147e3c#900d420b0928c4693e1143aa33a33ab670147e3c"
 dependencies = [
  "base64 0.13.1",
  "evidence-protocol",
@@ -202,6 +203,7 @@ dependencies = [
 [[package]]
 name = "evidence-protocol"
 version = "0.2.0"
+source = "git+https://github.com/teraveri/evidence?rev=900d420b0928c4693e1143aa33a33ab670147e3c#900d420b0928c4693e1143aa33a33ab670147e3c"
 dependencies = [
  "base64 0.13.1",
  "getrandom",

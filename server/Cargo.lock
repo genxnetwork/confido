@@ -840,6 +840,7 @@ dependencies = [
 [[package]]
 name = "evidence-core"
 version = "0.2.0"
+source = "git+https://github.com/teraveri/evidence?rev=900d420b0928c4693e1143aa33a33ab670147e3c#900d420b0928c4693e1143aa33a33ab670147e3c"
 dependencies = [
  "base64 0.13.1",
  "evidence-protocol",
@@ -851,6 +852,7 @@ dependencies = [
 [[package]]
 name = "evidence-protocol"
 version = "0.2.0"
+source = "git+https://github.com/teraveri/evidence?rev=900d420b0928c4693e1143aa33a33ab670147e3c#900d420b0928c4693e1143aa33a33ab670147e3c"
 dependencies = [
  "base64 0.13.1",
  "getrandom 0.2.17",

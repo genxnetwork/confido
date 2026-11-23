@@ -57,7 +57,7 @@ def add_bytes(archive, name, content):
     archive.addfile(entry, io.BytesIO(content))
 
 
-def collect(metadata, output):
+def collect(metadata, output, *, project_crates=PROJECT_CRATES):
     if not metadata.get("resolve"):
         raise ValueError("Full cargo metadata with dependency resolution is required")
     resolved = {node["id"] for node in metadata["resolve"]["nodes"]}
@@ -65,7 +65,7 @@ def collect(metadata, output):
     files = {}
     for package in sorted(metadata["packages"], key=lambda p: p["id"]):
         crate_root = Path(package["manifest_path"]).resolve().parent
-        if package["id"] not in resolved or crate_root in PROJECT_CRATES:
+        if package["id"] not in resolved or crate_root in project_crates:
             continue
         label = f"{package['name']}-{package['version']}"
         # Cargo may resolve two sources with the same name and version.
@@ -90,7 +90,10 @@ def collect(metadata, output):
                 path = crate_root / path
             candidates[path] = Path("declared-license") / path.name
         revision = None
-        if package.get("source") is None:
+        # Workspace crates can inherit their licence and notices from the
+        # repository root, whether Cargo resolves them by path or by Git.
+        source = package.get("source")
+        if source is None or source.startswith("git+"):
             root = repository_root(crate_root)
             for path in root.iterdir():
                 if path.is_file() and attribution_file(path):
@@ -104,6 +107,10 @@ def collect(metadata, output):
                 revision = subprocess.check_output(
                     ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
                 ).strip()
+                if source and revision != source.rsplit("#", 1)[-1]:
+                    raise ValueError(
+                        f"Checked-out Git revision differs for {package['id']}"
+                    )
         if not candidates:
             supplement = (
                 PROJECT_ROOT / "third_party" / f"{package['name']}-{package['version']}"

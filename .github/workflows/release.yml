@@ -64,22 +64,24 @@ jobs:
       run: |
         cd server
         cargo build --locked --release
-        cp target/release/confido-server ./confido-server
 
-    - name: Build Client Package
+    - name: Build CLI Package
       run: |
         cd client
         cargo build --locked --release
-        cp target/release/confido_client ./confido-client
 
     - name: Collect release licences and third-party attribution
       run: |
         set -euo pipefail
         mkdir -p rpmbuild/SOURCES
         cp LICENSE THIRD_PARTY_NOTICES.md rpmbuild/SOURCES/
+        target=$(rustc -vV | sed -n 's/^host: //p')
         for component in server client; do
-          cargo metadata --locked --format-version 1 --manifest-path "$component/Cargo.toml" > "$RUNNER_TEMP/confido-$component-metadata.json"
-          python3 scripts/collect_licenses.py "$RUNNER_TEMP/confido-$component-metadata.json" "rpmbuild/SOURCES/confido-$component-third-party-licenses.tar.gz"
+          cargo metadata --locked --format-version 1 --filter-platform "$target" --manifest-path "$component/Cargo.toml" > "$RUNNER_TEMP/confido-$component-metadata.json"
+          package_name="confido-$component"
+          if [ "$component" = "client" ]; then package_name="confido-cli"; fi
+          cp "$component/target/release/$package_name" "rpmbuild/SOURCES/$package_name"
+          python3 scripts/collect_licenses.py "$RUNNER_TEMP/confido-$component-metadata.json" "rpmbuild/SOURCES/$package_name-third-party-licenses.tar.gz"
         done
 
     - name: Create RPM Package for Server
@@ -99,20 +101,20 @@ jobs:
         cp rpmbuild/RPMS/x86_64/confido-server-$VERSION-1*.rpm package/confido-server-$VERSION.rpm
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-    - name: Create RPM Package for Client
+    - name: Create RPM Package for CLI
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
         mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
         # Use the correct path to the spec file in the repository
-        cp ./client/specs/confido-client.spec rpmbuild/SPECS/
+        cp ./client/specs/confido-cli.spec rpmbuild/SPECS/
 
         # Update version in the spec file
-        sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-client.spec
+        sed -i "s/^Version:.*/Version: $VERSION/" rpmbuild/SPECS/confido-cli.spec
 
         # Build the RPM package
-        rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-client.spec
-        cp rpmbuild/RPMS/x86_64/confido-client-$VERSION-1*.rpm package/confido-client-$VERSION.rpm
+        rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/confido-cli.spec
+        cp rpmbuild/RPMS/x86_64/confido-cli-$VERSION-1*.rpm package/confido-cli-$VERSION.rpm
 
     - name: Calculate Hash of Server RPM
       id: calculate_hash
@@ -143,12 +145,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Client Package
+    - name: Upload CLI Package
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: package/confido-client-${{ env.VERSION }}.rpm
-        asset_name: confido-client-${{ env.VERSION }}.rpm
+        asset_path: package/confido-cli-${{ env.VERSION }}.rpm
+        asset_name: confido-cli-${{ env.VERSION }}.rpm
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

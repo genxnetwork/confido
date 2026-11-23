@@ -22,8 +22,9 @@ run is not an independent reproduction.
    packages later may change the image; retain or export this exact image
    for offline reproduction.
 
-5. **Run the live stage.** Use a compatible Azure Milan or Genoa SNP/HCL/vTPM
-   VM with independently enrolled product-specific AMD root, launch
+5. **Run the live stage.** Use a compatible Azure SNP/HCL/vTPM
+   VM with a Milan or Genoa AMD EPYC processor generation. Use a
+   policy with independently enrolled product-specific AMD root, launch
    measurement, TCB floor and IMA state. The harness needs root TPM access,
    Nginx, free ports 18001/18443/18444/14000, and HTTPS access to AMD KDS
    and the pinned GitHub reference. KDS receives the hardware identifier

@@ -196,7 +196,11 @@ def main():
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True, exist_ok=True)
-    prepare(PROJECT_ROOT / "bindings/wasm/Cargo.toml", output / "licenses")
+    prepare(
+        PROJECT_ROOT / "bindings/wasm/Cargo.toml",
+        output / "licenses",
+        target="wasm32-unknown-unknown",
+    )
     shutil.copytree(EXTENSION_ROOT / "src", output, dirs_exist_ok=True)
     (output / "config.js").write_text(
         "export const ORIGINS = " + json.dumps(origins, separators=(",", ":")) + ";\n"

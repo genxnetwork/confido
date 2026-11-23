@@ -1,0 +1,19 @@
+{
+  "crate": "yasna",
+  "version": "0.4.0",
+  "repository": "https://github.com/qnighy/yasna.rs",
+  "commit": "8b5376226feb9197cb797733e57910a5ce1567bf",
+  "source_of_revision": "Published crate .cargo_vcs_info.json",
+  "files": [
+    {
+      "file": "LICENSE-APACHE",
+      "source": "https://raw.githubusercontent.com/qnighy/yasna.rs/8b5376226feb9197cb797733e57910a5ce1567bf/LICENSE-APACHE",
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+    },
+    {
+      "file": "LICENSE-MIT",
+      "source": "https://raw.githubusercontent.com/qnighy/yasna.rs/8b5376226feb9197cb797733e57910a5ce1567bf/LICENSE-MIT",
+      "sha256": "2a7df90e60fd5512b8bca35d3ce90e068f21c52d962855053fd1d9e2e7ca0f16"
+    }
+  ]
+}

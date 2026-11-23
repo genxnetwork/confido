@@ -10,7 +10,7 @@ application connection.
 | [`src/main.rs`](src/main.rs) | Implements `collect`, `appraise`, `verify`, `replay`, and `migrate-archive`; handles bounded HTTP input and local archives. |
 | [`build.rs`](build.rs) | Stamps build metadata and the CLI source fingerprint. |
 | [`Cargo.toml`](Cargo.toml), `Cargo.lock` | Crate dependencies and the locked build graph. |
-| [`specs/confido-client.spec`](specs/confido-client.spec) | RPM packaging recipe. |
+| [`specs/confido-cli.spec`](specs/confido-cli.spec) | RPM packaging recipe. |
 
 Build from the repository root with
 `cargo build --locked --manifest-path client/Cargo.toml`. The

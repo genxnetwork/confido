@@ -193,7 +193,7 @@ def verification_cases(args, policy):
 
 
 def check_cli(cases):
-    cli = ROOT / "client/target/debug/confido_client"
+    cli = ROOT / "client/target/debug/confido-cli"
     metadata = json.loads(subprocess.check_output([str(cli), "--build-info"]))
     assert (
         metadata["core"]["source_sha256"]

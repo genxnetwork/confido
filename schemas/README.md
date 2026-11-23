@@ -1,22 +1,20 @@
 # Confido JSON contracts
 
 This directory contains JSON Schema Draft 2020-12 descriptions of the Confido
-0.2 caller and verifier records. The schemas describe serialized shapes; the
+0.2 verifier and caller-held evidence records. The schemas describe serialized shapes; the
 portable verifier still performs its own bounded parsing, cryptographic checks,
 policy checks, and exact-byte comparisons.
 
 | Schema | Record and owner |
 | --- | --- |
-| [application-policy-v2.json](application-policy-v2.json) | Caller-selected HTTPS origin and a path to a verifier policy. The demo application owns this choice. |
 | [verifier-policy-v2.json](verifier-policy-v2.json) | Caller-approved AMD platform constraints and an immutable reference pin. Confido consumes these policy bytes; a registry response cannot select trust anchors. |
 | [verification-input-v2.json](verification-input-v2.json) | Optional serialized envelope for the evidence bytes, policy bytes, expected nonce, and evaluation time supplied to verification. The Rust and Python APIs also accept these arguments directly. |
 | [verification-result-v2.json](verification-result-v2.json) | Evidence-only verdict, ordered checks, confirmed claims, bindings, and coverage. It does not grant application access or authenticate the observed TLS peer. |
 | [verification-archive-v2.json](verification-archive-v2.json) | Caller-held evidence inputs and context, with an optional saved result. A saved result is historical data; replay must run the verifier again. |
-| [application-decision-v2.json](application-decision-v2.json) | Separate caller/application admission decision after evidence verification and the application's transport and identity checks. Confido does not issue it. |
 
-The two application schemas live here to document the shared caller/verifier
-boundary; their decisions remain application-owned. The cooperating demo keeps
-its actual policy files in `confidential-ai-example/profiles/`.
+The cooperating [Confidential AI example](https://github.com/genxnetwork/confidential-ai-example)
+owns its application policy and decision schemas. Confido does not select an
+HTTPS origin or issue an application admission decision.
 
 ## Version and trust boundaries
 

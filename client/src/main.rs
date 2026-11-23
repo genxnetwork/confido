@@ -20,11 +20,11 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 const CHALLENGE_DEADLINE: Duration = Duration::from_secs(120);
 const USAGE: &str = "Usage:
-  confido_client collect APP_POLICY NEW_ARCHIVE
-  confido_client appraise APP_POLICY NEW_ARCHIVE
-  confido_client verify VERIFIER_POLICY ARCHIVE EXPECTED_NONCE TIME
-  confido_client replay VERIFIER_POLICY ARCHIVE TIME
-  confido_client migrate-archive LEGACY_ARCHIVE NEW_ARCHIVE TIME";
+  confido-cli collect APP_POLICY NEW_ARCHIVE
+  confido-cli appraise APP_POLICY NEW_ARCHIVE
+  confido-cli verify VERIFIER_POLICY ARCHIVE EXPECTED_NONCE TIME
+  confido-cli replay VERIFIER_POLICY ARCHIVE TIME
+  confido-cli migrate-archive LEGACY_ARCHIVE NEW_ARCHIVE TIME";
 
 struct LoadedApplicationPolicy {
     settings: Value,
@@ -415,7 +415,7 @@ async fn main() -> Result<()> {
     }
 
     if args.get(1).map(String::as_str) == Some("--version") {
-        println!("confido_client {}", env!("CARGO_PKG_VERSION"));
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     if args.get(1).map(String::as_str) == Some("migrate-archive") {

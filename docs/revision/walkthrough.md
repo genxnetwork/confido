@@ -1,10 +1,11 @@
 # Technical walkthrough (10–12 minutes)
 
 This is the planned interactive demonstration narrative. For a reproducible
-local Genoa run with a synthetic downstream responder, use the
+local Genoa run (the current AMD EPYC test platform) with a synthetic downstream responder, use the
 [rerun checklist](rerun.md) and keep its limitations visible.
 
-1. **0:00–2:00 — Scope.** Show the policy and [coverage matrix](coverage.md):
+1. **0:00–2:00 — Scope.** Start with the roles in the
+   [security model](../security-model.md), then show the policy and [coverage matrix](coverage.md):
    SNP/HCL authenticity, recovered vTPM AK, signed quote/PCRs, boot aggregate
    and exact enrolled IMA state. Explain that the log covers kernel modules;
    external inference is outside the measured boundary.
@@ -12,14 +13,17 @@ local Genoa run with a synthetic downstream responder, use the
 2. **2:00–3:00 — Local policy.** Show the selected HTTPS origin, direct report
    endpoint, exact pinned reference URL/digest and unsupported session binding.
 
-3. **3:00–6:00 — Match.** Choose the match endpoint and accept `[Y/n]`. Keep
-   detailed logs visible. Follow endorsements, platform policy, HCL AK,
+3. **3:00–6:00 — Match.** For the isolated harness, use the explicit Genoa
+   policy pair from the rerun checklist. For an approved interactive deployment,
+   choose its matching application profile and accept `[Y/n]`. Follow
+   endorsements, platform policy, HCL AK,
    quote binding, reference/PCR/IMA and HTTPS hostname/certificate confirmation.
    Open chat only after those checks. Explain where inference runs before
    submitting a prompt.
 
-4. **6:00–8:00 — Mismatch.** Choose the other endpoint and use the same
-   verification code. Show completed cryptographic stages and the incompatible
+4. **6:00–8:00 — Mismatch.** Use the negative reference policy with the same
+   verification code. The isolated harness uses the same VM and endpoint for
+   both policies. Show completed cryptographic stages and the incompatible
    reference at `measurement_mismatch`. Confirm that application requests and
    credentials are withheld.
 

@@ -9,12 +9,13 @@ is in `../bindings/wasm`. `make wheel`/`make install` forward to the Python pack
 Legacy connection APIs were removed; see [migration](../docs/migration-0.2.md).
 
 The implementation is split by verification stage: `verify.rs` owns policy
-parsing and orchestration, the sibling Evidence checkout (`../../evidence/core/`) decodes
+parsing and orchestration, the pinned `evidence-core` Git dependency decodes
 SNP/HCL and quote structures, `crypto.rs` validates AMD certificate paths,
 `reference.rs` compares IMA measurements, `pcr.rs` replays PCR state, and
 `result.rs` defines structured checks and results. `lib.rs` exposes the public
-API. Larger unit tests live in `../../evidence/core/src/formats/tests.rs` and
-`src/reference/tests.rs`; installed-wheel tests and fixtures are under `tests/`.
+API. Larger unit tests live in
+[Evidence core](https://github.com/teraveri/evidence/blob/900d420b0928c4693e1143aa33a33ab670147e3c/core/src/formats/tests.rs)
+and `src/reference/tests.rs`; installed-wheel tests and fixtures are under `tests/`.
 
 A `verified` result concerns evidence only. The caller must separately authenticate
 its actual TLS peer and decide whether to send credentials or application requests.

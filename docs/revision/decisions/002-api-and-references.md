@@ -35,5 +35,5 @@ verifier; it is not a digest of reserialized JSON. Certificate and AMD ARK
 fingerprints cover complete X.509 DER; the vTPM key fingerprint covers DER
 SubjectPublicKeyInfo. The quote's IMA digest uses the fixed Rust struct field
 order, independently checked against
-`../evidence/core/tests/fixtures/binding-v1.json`.
+[Evidence core's binding-v1 test vector](https://github.com/teraveri/evidence/blob/900d420b0928c4693e1143aa33a33ab670147e3c/core/tests/fixtures/binding-v1.json).
 These serializations serve different purposes and must not be interchanged.

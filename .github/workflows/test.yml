@@ -17,12 +17,6 @@ jobs:
         with:
           path: confido
           persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          repository: teraveri/evidence
-          ref: 900d420b0928c4693e1143aa33a33ab670147e3c
-          path: evidence
-          persist-credentials: false
       - name: Portable build tools
         run: |
           sudo apt-get update
@@ -32,7 +26,6 @@ jobs:
           rustup target add wasm32-unknown-unknown
       - name: Core and CLI
         run: |
-          cargo test --locked --manifest-path ../evidence/Cargo.toml --workspace
           cargo test --locked --manifest-path lib/Cargo.toml
           cargo build --locked --manifest-path client/Cargo.toml
           python3 scripts/check_verifier_dependencies.py
@@ -62,12 +55,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: confido
-          persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          repository: teraveri/evidence
-          ref: 900d420b0928c4693e1143aa33a33ab670147e3c
-          path: evidence
           persist-credentials: false
       - name: Native collector prerequisites
         run: |

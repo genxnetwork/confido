@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -11,7 +12,15 @@ from collect_licenses import collect
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def prepare(manifest, destination):
+def prepare(manifest, destination, project_root=ROOT, *, target=None):
+    target = target or os.environ.get("CARGO_BUILD_TARGET")
+    if target is None:
+        toolchain = subprocess.check_output(["rustc", "-vV"], text=True)
+        target = next(
+            line.removeprefix("host: ")
+            for line in toolchain.splitlines()
+            if line.startswith("host: ")
+        )
     metadata = json.loads(
         subprocess.check_output(
             [
@@ -20,6 +29,8 @@ def prepare(manifest, destination):
                 "--locked",
                 "--format-version",
                 "1",
+                "--filter-platform",
+                target,
                 "--manifest-path",
                 str(manifest),
             ],
@@ -27,14 +38,35 @@ def prepare(manifest, destination):
         )
     )
     destination.mkdir(parents=True, exist_ok=True)
-    for name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
-        shutil.copyfile(ROOT / name, destination / name)
-    collect(metadata, destination / "third-party-licenses.tar.gz")
+    shutil.copyfile(project_root / "LICENSE", destination / "LICENSE")
+    notices = project_root / "THIRD_PARTY_NOTICES.md"
+    if notices.is_file():
+        shutil.copyfile(notices, destination / notices.name)
+    options = {}
+    if project_root != ROOT:
+        # Downstream packages carry their own project licence. Exclude their
+        # workspace crates so generated attribution is never archived recursively.
+        members = set(metadata["workspace_members"])
+        options["project_crates"] = {
+            Path(package["manifest_path"]).resolve().parent
+            for package in metadata["packages"]
+            if package["id"] in members
+        }
+    collect(metadata, destination / "third-party-licenses.tar.gz", **options)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--project-root", type=Path, default=ROOT)
+    parser.add_argument(
+        "--target", help="Rust target; defaults to CARGO_BUILD_TARGET or the host"
+    )
     args = parser.parse_args()
-    prepare(args.manifest.resolve(), args.destination.resolve())
+    prepare(
+        args.manifest.resolve(),
+        args.destination.resolve(),
+        args.project_root.resolve(),
+        target=args.target,
+    )

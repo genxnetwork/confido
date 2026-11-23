@@ -1,9 +1,8 @@
 # Migrating to Confido 0.2
 
-Confido 0.2.0 is the current JAN development target, not a published upgrade
-from a released 0.3 or 0.4. Those numbers appeared in provisional Confido
-branches and historical artifacts. Keep identifiers in recorded runs unchanged;
-use 0.2.0 for new Confido packages and documentation.
+Confido 0.2.0 is the current JAN development target. This guide covers changes
+from the original attested-client API; dated acceptance records retain the
+identifiers of the artifacts actually tested.
 
 This revision replaces the original attested-client API with a portable
 `evidence_only` verifier. The evidence profile `azure-snp-vtpm-ima/1` and quote
@@ -20,8 +19,8 @@ for the distinct version boundaries.
 | `discover_py` | Caller selects the HTTPS origin and verifier policy locally; `inspect_requirements` only provides an untrusted selector for public KDS retrieval. |
 | `connect_py`, `AttestedSession`, `aTLS_connect_py` | Caller collects evidence, runs `verify`, authenticates the actual TLS peer, then makes its own admission decision. |
 | `appraise_offline_py` | `verify` with archived evidence bytes and independently chosen policy, expected nonce and evaluation time. |
-| `AppraisalConfig` with an origin | Separate caller-owned [application policy](../schemas/application-policy-v2.json) and [verifier policy](../schemas/verifier-policy-v2.json). |
-| `application_admitted` in the verifier result | Separate application-owned [decision record](../schemas/application-decision-v2.json). |
+| `AppraisalConfig` with an origin | Separate caller-owned application policy and [verifier policy](../schemas/verifier-policy-v2.json). The cooperating demo defines its application policy in `confidential-ai-example/schemas/`. |
+| `application_admitted` in the verifier result | Separate application-owned decision record. The cooperating demo defines its decision schema in `confidential-ai-example/schemas/`. |
 | `timings_ms` and live/session/freshness claims in the result | Caller run metadata; the verifier reports only evidence appraisal. |
 
 For a live run, the caller chooses an origin and locally approved verifier
@@ -44,7 +43,7 @@ apply to both.
 ## Migrate archives and result consumers
 
 For an old schema-v1 archive, run
-`confido_client migrate-archive OLD NEW UNIX_SECONDS` to create a schema-v2
+`confido-cli migrate-archive OLD NEW UNIX_SECONDS` to create a schema-v2
 archive for **historical replay**. The adapter reserializes the legacy report
 JSON: its raw-byte `report_sha256` may change, while the wire-v1 quote binding over
 the parsed IMA entries does not. Replay still needs a separately selected
@@ -84,7 +83,7 @@ replay original inputs to obtain current checks.
 
 Use matched verifier, caller and application transport builds. Python
 `confido_verifier.build_info()`, WASM `build_info()` and
-`confido_client --build-info` expose core `pipeline_revision = 2` plus source,
+`confido-cli --build-info` expose core `pipeline_revision = 2` plus source,
 wrapper, toolchain, target and build-profile fingerprints. These are
 diagnostic build identities, not evidence claims. The example app's runtime
 manifest and the extension's `runtime-manifest.json` check packaged assets

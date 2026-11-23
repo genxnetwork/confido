@@ -1,14 +1,15 @@
 # Confido 0.2
 
-Development revision in JAN DIGITRUST; a 0.2.0 release has not been published.
-
 Confido is a portable **evidence verifier**. It accepts bytes, locally selected
 policy, an independent expected nonce and explicit evaluation time. It returns an
 `evidence_only` result. It opens no connection and creates no application session.
 
-The supported profile is `azure-snp-vtpm-ima/1`: pinned AMD Milan or Genoa ARK → ASK → VCEK
-→ SNP report → Azure HCL → vTPM AK → quote → PCR/IMA/reference checks. Wire v1 and
-its existing certificate/IMA transcript are preserved.
+The supported `azure-snp-vtpm-ima/1` profile checks an AMD-signed report from
+an Azure confidential VM, links it to a virtual TPM quote, and compares the
+measured boot and kernel-module state with caller-approved reference values.
+The [security model](docs/security-model.md) explains the trust chain, roles,
+terminology, and limits for reviewers new to TEE attestation. The wire-v1
+certificate/IMA binding is specified by the shared Evidence protocol.
 
 ```mermaid
 flowchart LR
@@ -22,7 +23,7 @@ flowchart LR
 
 | Directory | Responsibility |
 |---|---|
-| [Evidence](https://github.com/teraveri/evidence) (`../evidence/`) | Shared workspace checked out beside Confido |
+| [Evidence](https://github.com/teraveri/evidence) | Shared Git source pinned by the Cargo manifests and lockfiles |
 | [Evidence protocol](https://github.com/teraveri/evidence/tree/main/protocol) | Wire v1 structures and binding transcript |
 | [Evidence core](https://github.com/teraveri/evidence/tree/main/core) | Shared SNP/HCL/quote parsing and collected-snapshot consistency checks |
 | [`lib/`](lib/README.md) | Portable synchronous verifier, policy and reference appraisal |
@@ -41,17 +42,16 @@ and verifier policy locally. The report endpoint does not choose trust anchors.
 
 ## Build and test
 
-Rust 1.98.0 and Cargo locks are pinned. Check out `teraveri/evidence` as a
-sibling directory (`../evidence/`) at the revision pinned in
-`.github/workflows/test.yml`. The evidence crates share one workspace target
-directory; other packages retain separate target directories.
+Rust 1.98.0 and Cargo locks are pinned. Cargo fetches both Evidence crates
+directly from the public Teraveri Git repository at commit
+`900d420b0928c4693e1143aa33a33ab670147e3c`; no sibling checkout is
+needed. Each Confido package has its own lockfile and pins that same source.
 The verifier uses `ring` and a bounded X.509 profile; its runtime requires neither
 OpenSSL nor TPM2-TSS. `ring` compiles portable C with clang for WASM. OpenSSL is used
 only in native verifier test fixtures; the collector and application transport
 have their own native dependencies.
 
 ```sh
-cargo test --locked --manifest-path ../evidence/Cargo.toml --workspace
 cargo test --locked --manifest-path lib/Cargo.toml
 cargo test --locked --manifest-path server/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml
@@ -63,6 +63,9 @@ python -m unittest discover -s lib/tests -v
 python -m unittest discover -s tests -v
 python -m unittest discover -s server/tests -v
 ```
+
+The Evidence repository runs its own workspace tests in CI; Confido's locked
+builds test the imported crates through their consumers.
 
 Collector prerequisites on Ubuntu: `build-essential pkg-config perl clang
 libclang-dev libtss2-dev`; native test/transport builds compile vendored OpenSSL.
@@ -104,17 +107,20 @@ The WASM wrapper accepts `Uint8Array` inputs and returns a JSON string.
 ## CLI
 
 ```sh
-client/target/debug/confido_client collect ../confidential-ai-example/profiles/match.json /private/new-archive.json
-client/target/debug/confido_client appraise ../confidential-ai-example/profiles/match.json /private/new-run.json
-client/target/debug/confido_client verify ../confidential-ai-example/profiles/verifier-match.json archive.json EXPECTED_NONCE_BASE64 UNIX_SECONDS
-client/target/debug/confido_client replay ../confidential-ai-example/profiles/verifier-match.json archive.json UNIX_SECONDS
-client/target/debug/confido_client migrate-archive old-v1.json new-v2.json UNIX_SECONDS
+client/target/debug/confido-cli collect ../confidential-ai-example/profiles/match.json /private/new-archive.json
+client/target/debug/confido-cli appraise ../confidential-ai-example/profiles/match.json /private/new-run.json
+client/target/debug/confido-cli verify ../confidential-ai-example/profiles/verifier-match.json archive.json EXPECTED_NONCE_BASE64 UNIX_SECONDS
+client/target/debug/confido-cli replay ../confidential-ai-example/profiles/verifier-match.json archive.json UNIX_SECONDS
+client/target/debug/confido-cli migrate-archive old-v1.json new-v2.json UNIX_SECONDS
 ```
 
 `appraise` collects and verifies evidence only. `replay` deliberately uses a
 historical archived nonce; neither command grants live application access.
 The paths above are GENXT demo policies owned by `confidential-ai-example`;
 Confido consumes caller-supplied policy bytes and does not own their trust pins.
+Those default application profiles target the original Milan demo. For the
+current Genoa test VM, use the explicit stage policies in the
+[local acceptance checklist](docs/revision/rerun.md).
 Archives are created exclusively with mode 0600. Raw report/reference bytes are
 preserved in schema v2. CLI accepts legacy archives through its caller-side adapter.
 
@@ -143,13 +149,11 @@ profile, not general-purpose PKIX path discovery.
 
 See the [documentation index](docs/README.md), [schema catalog](schemas/README.md)
 and [third-party notices](THIRD_PARTY_NOTICES.md).
-Earlier design and validation records remain available in Git history at
-`ec49a75`. They describe older deployment snapshots and are not acceptance
-evidence for the direct report endpoint.
 
 ## Origin and licence
 
-Confido originated at [GENXT](https://github.com/genxnetwork/confido). This revision
-is developed in [JAN DIGITRUST](https://github.com/jandigitrust/confido) for
-contribution upstream. Project-authored material is licensed under
-[Apache-2.0](LICENSE); third-party material retains its original terms.
+Confido began as [GENXT's attested TLS prototype](https://github.com/genxnetwork/confido).
+The [licensing issue](https://github.com/genxnetwork/confido/issues/8) records its
+move to open development and the plan for [JAN DIGITRUST](https://github.com/jandigitrust/confido)
+to develop the verifier for contribution upstream. Project-authored material is
+licensed under [Apache-2.0](LICENSE); third-party material retains its original terms.

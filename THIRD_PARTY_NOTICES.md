@@ -5,7 +5,7 @@ replace the licences, copyright notices, or attribution requirements of dependen
 
 ## Preserved source material
 
-- `azure-cvm-tooling` / `az-snp-vtpm`, pinned commit `9c6bff6c959994da280f8b3b5bad62a1600063d0`: Microsoft/Kinvolk, MIT licence. `server/src/collector.rs` retains the Microsoft copyright/MIT notice; Confido modifications add multi-bank collection and expose the quote data used by the verifier. The adjacent `../evidence/core/src/formats.rs` retains the source attribution for adapted SNP/HCL layouts. [Preserved upstream licence](third_party/azure-cvm-tooling-LICENSE).
+- `azure-cvm-tooling` / `az-snp-vtpm`, pinned commit `9c6bff6c959994da280f8b3b5bad62a1600063d0`: Microsoft/Kinvolk, MIT licence. `server/src/collector.rs` retains the Microsoft copyright/MIT notice; Confido modifications add multi-bank collection and expose the quote data used by the verifier. The [Teraveri Evidence core](https://github.com/teraveri/evidence/blob/900d420b0928c4693e1143aa33a33ab670147e3c/core/src/formats.rs) retains source attribution for adapted SNP/HCL layouts. [Preserved upstream licence](third_party/azure-cvm-tooling-LICENSE).
 - Cargo lockfiles identify additional Rust dependencies. The current verifier wheel has no TPM2-TSS or OpenSSL runtime dependency; the native collector has its own dependency set. Dependencies retain their authors' terms.
 
 ## Dependencies included in binary releases
@@ -24,13 +24,14 @@ replace the licences, copyright notices, or attribution requirements of dependen
 The RPM workflow creates a separate third-party licence archive for each binary
 from its locked Cargo metadata after compilation. It includes the resolved package
 inventory and verbatim licence, copyright, author, and notice files found in those
-packages, including nested bundled components. For path dependencies, repository
-root attribution files are also included. The inventory conservatively includes
-resolved build and target-specific dependencies as well as runtime dependencies;
+packages, including nested bundled components. For path and Git workspace
+dependencies, repository root attribution files are also included. The inventory
+conservatively includes resolved build and Linux-target dependencies as well
+as runtime dependencies;
 it is not a claim that every listed dependency is linked into the binary.
 
 Each RPM installs this document, the root LICENSE, and that archive's contents
-under `/usr/share/licenses/confido-client/` or
+under `/usr/share/licenses/confido-cli/` or
 `/usr/share/licenses/confido-server/`. Upstream NOTICE files, when present, are
 preserved in the corresponding dependency directory. No project-level NOTICE
 file is added because the inspected Confido sources establish no requirement
@@ -49,6 +50,7 @@ also require their own third-party attribution packaging review before publicati
 
 The Python Makefile prepares `licenses/` before building a wheel. The wheel
 includes the project licence, this document, and a dependency attribution archive
-from the locked Python binding graph. Browser packages carry the same materials
-for the WASM graph under `licenses/`. Internal Confido crates are covered by the
+from the locked Python binding graph for the build target. Browser packages carry
+the same materials for the `wasm32-unknown-unknown` graph under `licenses/`.
+Internal Confido crates are covered by the
 project licence and are excluded from the third-party inventory.

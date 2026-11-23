@@ -1,0 +1,19 @@
+{
+  "crate": "impl-more",
+  "version": "0.3.5",
+  "repository": "https://github.com/robjtede/impl-more",
+  "commit": "d21e17c878268013f642e55f622895913b1b609e",
+  "source_of_revision": "Published crate .cargo_vcs_info.json",
+  "files": [
+    {
+      "file": "LICENSE-APACHE",
+      "source": "https://raw.githubusercontent.com/robjtede/impl-more/d21e17c878268013f642e55f622895913b1b609e/LICENSE-APACHE",
+      "sha256": "f8241cc8202a755dea998c4701117d10e958c4554367a7a970be56ba10541049"
+    },
+    {
+      "file": "LICENSE-MIT",
+      "source": "https://raw.githubusercontent.com/robjtede/impl-more/d21e17c878268013f642e55f622895913b1b609e/LICENSE-MIT",
+      "sha256": "e3da8020d66bc3bbe11355804e54ea93729df56b4258277abe5c9ec5fad3442a"
+    }
+  ]
+}
