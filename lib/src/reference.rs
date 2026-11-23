@@ -12,7 +12,6 @@ pub struct ReferenceValues {
 }
 
 #[cfg(test)]
-#[path = "reference_tests.rs"]
 mod tests;
 
 impl ReferenceValues {

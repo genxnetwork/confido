@@ -11,9 +11,10 @@ run is not an independent reproduction.
    requirements. Run locked Rust builds and tests; retain logs and exit codes.
 
 3. **Build callers.** Build and install compatible verifier and application
-   wheels. Run `lib/tests` and the chat example's `tests`. Run
-   `../confidential-ai-example/scripts/preflight.py` with the installed wheels
-   to check synchronized deployment templates and runtime configuration.
+   wheels. Run Confido's `lib/tests`, root `tests`, and `server/tests`, then the
+   chat example's `tests`. Run `../confidential-ai-example/scripts/preflight.py`
+   with the installed wheels to check synchronized deployment templates and
+   runtime configuration.
 
 4. **Freeze the image.** Run `make build` in the sibling example. Preserve
    wheel hashes, the requirements lock, base/application image identifiers,

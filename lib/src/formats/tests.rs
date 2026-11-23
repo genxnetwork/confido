@@ -280,7 +280,7 @@ fn processor_product_selection_is_bounded() {
 #[test]
 fn binding_v1_serialization_matches_existing_vector() {
     let v: serde_json::Value =
-        serde_json::from_str(include_str!("../tests/fixtures/binding-v1.json")).unwrap();
+        serde_json::from_str(include_str!("../../tests/fixtures/binding-v1.json")).unwrap();
     let entries: Vec<IMALogEntry> = serde_json::from_value(v["ima_measurements"].clone()).unwrap();
     assert_eq!(
         serde_json::to_string(&entries).unwrap(),

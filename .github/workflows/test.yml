@@ -30,6 +30,7 @@ jobs:
           python -m pip install 'maturin==1.15.0' jsonschema playwright
           make -C bindings/python install PYTHON=python
           python -m unittest discover -s lib/tests -v
+          python -m unittest discover -s tests -v
       - name: Browser worker and MV3 extension
         run: |
           cargo install wasm-bindgen-cli --version 0.2.100 --locked

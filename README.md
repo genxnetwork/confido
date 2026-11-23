@@ -53,6 +53,8 @@ python3 -m venv .venv
 python -m pip install 'maturin==1.15.0' jsonschema
 make -C bindings/python install PYTHON=python
 python -m unittest discover -s lib/tests -v
+python -m unittest discover -s tests -v
+python -m unittest discover -s server/tests -v
 ```
 
 Collector prerequisites on Ubuntu: `build-essential pkg-config perl clang

@@ -329,5 +329,4 @@ pub fn verify_snapshot(evidence: &Evidence, nonce: &[u8], certificate_der: &[u8]
 }
 
 #[cfg(test)]
-#[path = "format_tests.rs"]
 mod tests;
