@@ -6,8 +6,8 @@ reference bytes. Start with `README.md`; for revision work, use
 when relevant to the task.
 For serialized contracts, start with `schemas/README.md`.
 
-- `lib/` is the portable verifier, `evidence/protocol/` defines wire structures,
-  `evidence/core/` checks bounded formats and snapshot consistency, and
+- `lib/` is the portable verifier, the sibling `../evidence/protocol/` defines
+  wire structures, `../evidence/core/` checks bounded formats and snapshot consistency, and
   `bindings/` expose the verifier. `server/` collects evidence; `client/` and
   `extension/` are callers.
 - The sibling `confidential-ai-example` owns demo policies, authenticated

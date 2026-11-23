@@ -5,7 +5,7 @@ replace the licences, copyright notices, or attribution requirements of dependen
 
 ## Preserved source material
 
-- `azure-cvm-tooling` / `az-snp-vtpm`, pinned commit `9c6bff6c959994da280f8b3b5bad62a1600063d0`: Microsoft/Kinvolk, MIT licence. `server/src/collector.rs` retains the Microsoft copyright/MIT notice; Confido modifications add multi-bank collection and expose the quote data used by the verifier. `evidence/core/src/formats.rs` retains the source attribution for adapted SNP/HCL layouts. [Preserved upstream licence](third_party/azure-cvm-tooling-LICENSE).
+- `azure-cvm-tooling` / `az-snp-vtpm`, pinned commit `9c6bff6c959994da280f8b3b5bad62a1600063d0`: Microsoft/Kinvolk, MIT licence. `server/src/collector.rs` retains the Microsoft copyright/MIT notice; Confido modifications add multi-bank collection and expose the quote data used by the verifier. The adjacent `../evidence/core/src/formats.rs` retains the source attribution for adapted SNP/HCL layouts. [Preserved upstream licence](third_party/azure-cvm-tooling-LICENSE).
 - Cargo lockfiles identify additional Rust dependencies. The current verifier wheel has no TPM2-TSS or OpenSSL runtime dependency; the native collector has its own dependency set. Dependencies retain their authors' terms.
 
 ## Dependencies included in binary releases

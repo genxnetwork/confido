@@ -1,26 +1,27 @@
 """Deterministic fingerprints of explicit native build inputs (never credentials)."""
 
 import hashlib
+import os
 import sys
 from pathlib import Path
 
 
 def files(root, scope):
+    evidence = root.parent / "evidence"
     scopes = {
-        "core": ["lib", "evidence/protocol", "evidence/core"],
-        "python": ["bindings/python"],
-        "wasm": ["bindings/wasm"],
-        "cli": ["client"],
+        "core": [root / "lib", evidence / "protocol", evidence / "core"],
+        "python": [root / "bindings/python"],
+        "wasm": [root / "bindings/wasm"],
+        "cli": [root / "client"],
     }
     paths = {
         root / "scripts/source_fingerprint.py",
         root / "build_support.rs",
-        root / "evidence/Cargo.toml",
-        root / "evidence/Cargo.lock",
+        evidence / "Cargo.toml",
+        evidence / "Cargo.lock",
     }
     directories = []
-    for relative in scopes[scope]:
-        base = root / relative
+    for base in scopes[scope]:
         directories.append(base / "src")
         paths.update((base / "src").rglob("*.rs"))
         paths.update(
@@ -32,9 +33,9 @@ def files(root, scope):
                 "pyproject.toml",
                 "Makefile",
             )
-            # Workspace members share evidence/Cargo.lock. A transient lockfile
+            # Workspace members share ../evidence/Cargo.lock. A transient lockfile
             # created by a standalone member command is not a build input.
-            if not (relative.startswith("evidence/") and name == "Cargo.lock")
+            if not (base.is_relative_to(evidence) and name == "Cargo.lock")
             if (base / name).is_file()
         )
     return sorted(paths), directories
@@ -43,7 +44,9 @@ def files(root, scope):
 def fingerprint(root, scope):
     digest = hashlib.sha256()
     for path in files(root, scope)[0]:
-        name = path.relative_to(root).as_posix().encode()
+        # Relative labels keep the digest independent of the checkout's
+        # absolute location, including the adjacent evidence repository.
+        name = os.path.relpath(path, root).replace(os.sep, "/").encode()
         data = path.read_bytes()
         digest.update(
             len(name).to_bytes(8, "big") + name + len(data).to_bytes(8, "big") + data

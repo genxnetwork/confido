@@ -48,8 +48,8 @@ own compatibility rules.
 | Component | Current responsibility | Destination |
 |---|---|---|
 | `lib/` | Deterministic bytes/policy/nonce/time verification | Confido, then GENXT upstream |
-| `evidence/protocol/` | Shared evidence wire and binding types | Future `evidence` repository with `evidence/core/` |
-| `evidence/core/` | Shared bounded parsing and snapshot consistency checks | Future `evidence` repository with `evidence/protocol/` |
+| `../evidence/protocol/` | Shared evidence wire and binding types | Teraveri Evidence repository |
+| `../evidence/core/` | Shared bounded parsing and snapshot consistency checks | Teraveri Evidence repository |
 | `bindings/python/`, `bindings/wasm/` | Thin wrappers over the same verifier | Confido |
 | `server/` | Native SNP/vTPM/IMA collection and report endpoint | JAN Attestor |
 | `client/` | Evidence retrieval, offline verification and replay | Split caller/verification ownership during extraction |
@@ -60,11 +60,11 @@ its own repository history. New integration results must identify
 the actual revisions used; historical cross-repository reports are not current
 acceptance evidence.
 
-The collector now depends on the two crates in `evidence/`, without a direct
-dependency on the full Confido verifier. The shared workspace is staged inside
-this checkout so locked builds remain self-contained. When the independent
-`evidence` repository is published, move both crates together, pin the same
-release in Confido and Attestor, and retain the wire/binding contract tests.
+The collector and verifier use the two crates from the sibling `../evidence/`
+checkout. The collector does not depend on the full Confido verifier. CI pins
+one Evidence commit for both crates; publishing that commit to Teraveri is
+required before the remote checks can run. Keep the wire/binding contract tests
+when Attestor is extracted.
 
 Old Docker inventory and dmesg implementations remain in Git history. They are
 not authenticated evidence in the supported profile and are absent from the

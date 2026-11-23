@@ -1,11 +1,13 @@
 # Building Confido 0.2
 
-Use the pinned Rust toolchain in `rust-toolchain.toml`. The two evidence crates
-share `evidence/Cargo.lock`; other packages retain their own lockfiles. Run
-commands from the repository root.
+Use the pinned Rust toolchain in `rust-toolchain.toml`. Check out
+`teraveri/evidence` beside Confido at the commit pinned in
+`.github/workflows/test.yml`. The two external crates share
+`../evidence/Cargo.lock`; other packages retain their own lockfiles. Run
+commands from the Confido repository root.
 
 ```sh
-cargo test --locked --manifest-path evidence/Cargo.toml --workspace
+cargo test --locked --manifest-path ../evidence/Cargo.toml --workspace
 cargo test --locked --manifest-path lib/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml
 cargo test --locked --manifest-path server/Cargo.toml
@@ -30,7 +32,7 @@ python -m unittest discover -s server/tests -v
 Rust tests that need private functions live in the owning module: short tests
 stay inline, while larger suites use a `tests.rs` child module. Installed-wheel
 API tests and fixtures live in `lib/tests`; evidence parser and quote tests live
-in `evidence/core/src/formats/tests.rs`, while launcher tests live in
+in `../evidence/core/src/formats/tests.rs`, while launcher tests live in
 `server/tests`. Repository-wide build checks live in `tests`. Browser and replay
 checks are explicit integration commands under `scripts`.
 

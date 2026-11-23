@@ -22,9 +22,9 @@ flowchart LR
 
 | Directory | Responsibility |
 |---|---|
-| [`evidence/`](evidence/README.md) | Shared, locked workspace prepared for a separate repository |
-| [`evidence/protocol/`](evidence/protocol/README.md) | Wire v1 structures and binding transcript |
-| [`evidence/core/`](evidence/core/README.md) | Shared SNP/HCL/quote parsing and collected-snapshot consistency checks |
+| [Evidence](https://github.com/teraveri/evidence) (`../evidence/`) | Shared workspace checked out beside Confido |
+| [Evidence protocol](https://github.com/teraveri/evidence/tree/main/protocol) | Wire v1 structures and binding transcript |
+| [Evidence core](https://github.com/teraveri/evidence/tree/main/core) | Shared SNP/HCL/quote parsing and collected-snapshot consistency checks |
 | [`lib/`](lib/README.md) | Portable synchronous verifier, policy and reference appraisal |
 | [`bindings/python/`](bindings/python/README.md) | `confido-verifier` distribution / `confido_verifier` import |
 | [`bindings/wasm/`](bindings/wasm/README.md) | Same verifier compiled to WASM |
@@ -41,15 +41,17 @@ and verifier policy locally. The report endpoint does not choose trust anchors.
 
 ## Build and test
 
-Rust 1.98.0 and Cargo locks are pinned. The evidence crates share one workspace
-target directory; other packages retain separate target directories.
+Rust 1.98.0 and Cargo locks are pinned. Check out `teraveri/evidence` as a
+sibling directory (`../evidence/`) at the revision pinned in
+`.github/workflows/test.yml`. The evidence crates share one workspace target
+directory; other packages retain separate target directories.
 The verifier uses `ring` and a bounded X.509 profile; its runtime requires neither
 OpenSSL nor TPM2-TSS. `ring` compiles portable C with clang for WASM. OpenSSL is used
 only in native verifier test fixtures; the collector and application transport
 have their own native dependencies.
 
 ```sh
-cargo test --locked --manifest-path evidence/Cargo.toml --workspace
+cargo test --locked --manifest-path ../evidence/Cargo.toml --workspace
 cargo test --locked --manifest-path lib/Cargo.toml
 cargo test --locked --manifest-path server/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml

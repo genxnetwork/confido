@@ -9,7 +9,7 @@ This revision replaces the original attested-client API with a portable
 `evidence_only` verifier. The evidence profile `azure-snp-vtpm-ima/1` and quote
 transcript remain at wire version 1. Policy, result, input and archive JSON
 schemas use version 2; the verifier pipeline has revision 2. See the
-[schema catalog](../schemas/README.md) and [protocol contract](../evidence/protocol/README.md)
+[schema catalog](../schemas/README.md) and [protocol contract](https://github.com/teraveri/evidence/blob/main/protocol/README.md)
 for the distinct version boundaries.
 
 ## Update callers

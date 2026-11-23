@@ -19,4 +19,4 @@ is the only current Confido migration guide.
 The acceptance records describe specific 2026-11-23 runs. They do not
 validate later edits or a public deployment. For the current serialized
 contracts, see the [schema catalog](../schemas/README.md); for the evidence
-transcript, see the [protocol README](../evidence/protocol/README.md).
+transcript, see the [Evidence protocol README](https://github.com/teraveri/evidence/blob/main/protocol/README.md).

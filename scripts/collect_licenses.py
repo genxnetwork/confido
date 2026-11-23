@@ -19,8 +19,6 @@ PROJECT_CRATES = {
         "lib",
         "client",
         "server",
-        "evidence/protocol",
-        "evidence/core",
         "bindings/python",
         "bindings/wasm",
     )
@@ -32,12 +30,13 @@ ATTRIBUTION_PREFIXES = (
     "copyright",
     "notice",
     "authors",
+    "third_party_notices",
 )
 
 
 def attribution_file(path):
     name = path.name.lower()
-    return any(
+    return name.endswith(("-license", "-licence", "_license", "_licence")) or any(
         name == prefix or name.startswith(prefix + separator)
         for prefix in ATTRIBUTION_PREFIXES
         for separator in (".", "-", "_")
@@ -96,6 +95,11 @@ def collect(metadata, output):
             for path in root.iterdir():
                 if path.is_file() and attribution_file(path):
                     candidates[path] = Path("repository") / path.name
+            third_party = root / "third_party"
+            if third_party.is_dir():
+                for path in third_party.rglob("*"):
+                    if path.is_file() and attribution_file(path):
+                        candidates[path] = Path("repository") / path.relative_to(root)
             if (root / ".git").exists():
                 revision = subprocess.check_output(
                     ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
