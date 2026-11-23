@@ -9,7 +9,6 @@ import enroll_reference as er
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRY = ROOT.parent / "reference-value-registry"
 ENTRY = "entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage"
 COMMIT = "a" * 40
 
@@ -19,8 +18,16 @@ class EnrollmentTests(unittest.TestCase):
         self.issuer_policy = json.loads((ROOT / "profiles/reference-issuers-stage.json").read_text())
         self.platform = json.loads((ROOT / "profiles/platform-genoa-stage.json").read_text())
         self.manifest_path = f"{ENTRY}/manifest.json"
-        self.manifest = (REGISTRY / self.manifest_path).read_bytes()
-        self.reference = (REGISTRY / ENTRY / "reference.json").read_bytes()
+        self.reference = json.dumps({"ima_measurements": [{"PCR": 10}], "pcr10_sha256": "0" * 64}).encode()
+        self.manifest = json.dumps({
+            "schema_version": 1,
+            "id": "azure-genoa-ubuntu2204-kernel-1071-stage",
+            "profile": "azure-snp-vtpm-ima/1",
+            "environment": {"tee": "AMD SEV-SNP", "product": "Genoa"},
+            "reference": {"path": f"{ENTRY}/reference.json", "sha256": hashlib.sha256(self.reference).hexdigest(), "ima_entries": 1},
+            "provenance": {"review_status": "stage-candidate"},
+            "coverage": ["boot_aggregate", "kernel_modules"],
+        }).encode()
         self.bundle = b"bundle-test-placeholder"
         self.objects = {self.manifest_path: self.manifest,
                         f"{ENTRY}/reference.json": self.reference,
