@@ -2,8 +2,10 @@
 
 The `azure-snp-vtpm-ima/1` evidence contract remains unchanged. SNP report
 versions 3 and 5 carry signed CPUID family/model fields. Family `0x19` models
-`0x00–0x0f` select Milan; `0x10–0x1f` and `0xa0–0xaf` select Genoa. Other values
-fail closed. The untrusted `inspect_requirements` result supplies a constrained
+`0x00–0x0f` select Milan; `0x10–0x1f` select Genoa. Model range
+`0xa0–0xaf` is Siena, which shares Genoa root keys but is a distinct product
+and remains unsupported. Other values fail closed. The untrusted
+`inspect_requirements` result supplies a constrained
 KDS selector, never a URL. Live callers require a present product selector to
 match the locally selected verifier policy before making a KDS request.
 

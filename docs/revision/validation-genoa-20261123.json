@@ -51,5 +51,20 @@
     "chromium_mv3_replay_and_asset_identity": "passed"
   },
   "public_service_or_remote_changed": false,
-  "remaining": "Independently approve and publish Genoa boot/IMA reference and verifier policy before public positive admission."
+  "remaining": "Independently approve and publish Genoa boot/IMA reference and verifier policy before public positive admission.",
+  "post_validation_correction": {
+    "reason": "AMD KDS 57230 revision 1.05 identifies family 0x19 model 0xa0\u20130xaf as Siena, not Genoa",
+    "core_source_sha256": "deb49eda214bf4cdaf9a7b5345d37a42a13745c5eb87c18bcd7916c5f3121628",
+    "wheel_sha256": "d0f3d47e297c45eedc4cda3ff0ab5a891e4d553eec6082dbdc8bb91935619949",
+    "rust_lib_tests": 15,
+    "python_api_tests": 7,
+    "milan_replay_cases": 28,
+    "genoa_saved_evidence": {
+      "status": "verified",
+      "checks": 12
+    },
+    "live_application_stage_run": "Earlier source hash above; unchanged Genoa model 0x11 path was replayed after this correction",
+    "cli_python_wasm_parity_cases_per_runtime": 7,
+    "chromium_mv3_replay_and_asset_identity": "passed"
+  }
 }

@@ -258,12 +258,12 @@ fn processor_product_selection_is_bounded() {
     b[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
     for version in [3u32, 5] {
         b[32..36].copy_from_slice(&version.to_le_bytes());
-        for (family, model, expected) in [(0x19, 0x01, Some("Milan")), (0x19, 0x11, Some("Genoa")), (0x19, 0xa0, Some("Genoa"))] {
+        for (family, model, expected) in [(0x19, 0x01, Some("Milan")), (0x19, 0x11, Some("Genoa"))] {
             b[32 + 392] = family;
             b[32 + 393] = model;
             assert_eq!(super::snp(&b).unwrap().product_hint().unwrap(), expected);
         }
-        for (family, model) in [(0x19, 0x20), (0x1a, 0x01), (0, 0)] {
+        for (family, model) in [(0x19, 0x20), (0x19, 0xa0), (0x1a, 0x01), (0, 0)] {
             b[32 + 392] = family;
             b[32 + 393] = model;
             assert!(super::snp(&b).unwrap().product_hint().is_err());
