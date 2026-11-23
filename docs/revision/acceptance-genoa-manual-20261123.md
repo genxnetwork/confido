@@ -1,26 +1,29 @@
 # Genoa manual-reference stage acceptance, 2026-11-23
 
-The isolated live VM run passed with the JAN verifier policy pinned to the
-public Teraveri PR #1 head commit
-`1653e184df49bcbe1e5b6438069860757a2619c3`. The recorded result is
-[`acceptance-genoa-manual-20261123.json`](acceptance-genoa-manual-20261123.json)
-(SHA-256 `1e55c4df53f36b9c7b7c263b830b312f4f8c19dac62452882cf1980a302795e0`).
+The final isolated live VM run passed with the JAN verifier policy pinned to
+the merged Teraveri `main` commit
+`3fa7913d44a377806bd94126589be1feb362b6cb`. The result is
+[`acceptance-genoa-manual-main-20261123.json`](acceptance-genoa-manual-main-20261123.json)
+(SHA-256 `fe117bc2d8eb3b4b306588783ea348c800a0726598cf7f47d0f5328c087cfad2`).
+An earlier run against PR #1 head commit
+`1653e184df49bcbe1e5b6438069860757a2619c3` also passed; its
+[`pre-merge record`](acceptance-genoa-manual-20261123.json) has SHA-256
+`1e55c4df53f36b9c7b7c263b830b312f4f8c19dac62452882cf1980a302795e0`.
 The positive Genoa SNP/TPM/IMA case admitted one request to the synthetic
 responder. The mismatched reference denied the request. Cross-origin, wrong TLS
 hostname, changed service identity and credential-free appraisal checks also
 passed. This test does not evaluate inference, application/model measurement,
 or a public deployment.
 
-The run used GENXT publisher commit
-`66521651cb2bd56739cb4717af8ff149e7e1ccc7` and JAN policy commit
-`5907c7f25ef02522f6e64609a5cfe7818113a2ef`. The manifest SHA-256 was
+The final run used GENXT publisher commit
+`66521651cb2bd56739cb4717af8ff149e7e1ccc7`. The manifest SHA-256 was
 `9e894415cd892a01a99b679cbac311ea6ba8648fc010c0bf5ffe854d735234e0`;
 the reference SHA-256 was
 `31d1655c424507116f1f39adbbab5d02b35524756fb7c95eb5fce4ca7672086b`.
 
 | Tested artifact | SHA-256 |
 | --- | --- |
-| JAN verifier policy | `588f262f5cee781835ea8f7b6727c45dfad0e990c9106ab41d9e6b28016ddb26` |
+| JAN verifier policy | `7d3cf06255a691ecec351bfbeaa147317eb2de272a96969d437b051e8aceb3c1` |
 | JAN issuer policy | `0a4e3c920d44703ac050ea1cd27d8d5665b10a59f5a2706bc408e3898c7cfeb7` |
 | GENXT manual bundle in Teraveri | `7ff61612ec617407dc3df51fee79a3a975fabc4654c7021075d6b8288a9cb92b` |
 | Stage sidecar binary | `8e72cd61114ca40c1a6847b1430330299a9ccdab263b35d095d589263631b7f9` |
@@ -34,6 +37,3 @@ The client runtime manifest recorded source fingerprints for core
 Python wrapper `9a9f546cea952d82fb722a3b929792d9b25507e29d6faa5af60e95df3dcb4458`,
 transport `f35394681a5d2b29fd2c95709b1618a48f073730d2d281b42689c57852c1122a`,
 and application `bf0e27c9327cc2594eae4dde5f2ba9341096782299f8f0ee24555a6dd037bff9`.
-After Teraveri PR #1 merges, regenerate the policy against the resulting
-`main` commit and repeat the live test before claiming that specific revision
-as accepted.

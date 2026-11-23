@@ -14,7 +14,7 @@
   },
   "reference": {
     "repository": "teraveri/reference-value-registry",
-    "commit": "1653e184df49bcbe1e5b6438069860757a2619c3",
+    "commit": "3fa7913d44a377806bd94126589be1feb362b6cb",
     "path": "entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage/reference.json",
     "sha256": "31d1655c424507116f1f39adbbab5d02b35524756fb7c95eb5fce4ca7672086b"
   }
