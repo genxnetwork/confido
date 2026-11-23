@@ -23,15 +23,16 @@ flowchart LR
 | Directory | Responsibility |
 |---|---|
 | [`protocol/`](protocol/README.md) | Wire v1 structures and binding transcript |
-| `lib/` | Portable synchronous verifier, bounded binary parsers |
-| `bindings/python/` | `confido-verifier` distribution / `confido_verifier` import |
-| `bindings/wasm/` | Same verifier compiled to WASM |
-| `server/` | Native TPM/IMA collector and `/tee-report` HTTP endpoint |
-| `client/` | HTTP collection, explicit verification and historical replay |
-| `extension/` | Local WASM worker, policy import, archive replay, permitted live retrieval |
+| [`lib/`](lib/README.md) | Portable synchronous verifier, bounded binary parsers |
+| [`bindings/python/`](bindings/python/README.md) | `confido-verifier` distribution / `confido_verifier` import |
+| [`bindings/wasm/`](bindings/wasm/README.md) | Same verifier compiled to WASM |
+| [`server/`](server/README.md) | Native TPM/IMA collector and `/tee-report` HTTP endpoint |
+| [`client/`](client/README.md) | HTTP collection, explicit verification and historical replay |
+| [`extension/`](extension/README.md) | Local WASM worker, policy import, archive replay, permitted live retrieval |
 
 The chat application's native TLS transport lives in the sibling
 `confidential-ai-example/native_transport`, independently of this library.
+Build and acceptance helpers are indexed in [`scripts/`](scripts/README.md).
 The collector accepts a fresh challenge at `POST /tee-report`; `HEAD /tee-report`
 returns 204 for a credentialless TLS peer check. Callers select the HTTPS origin
 and verifier policy locally. The report endpoint does not choose trust anchors.

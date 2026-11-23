@@ -8,6 +8,14 @@ Python packaging moved to `../bindings/python` (`confido_verifier`). WASM packag
 is in `../bindings/wasm`. `make wheel`/`make install` forward to the Python package.
 Legacy connection APIs were removed; see [migration](../docs/migration-0.2.md).
 
+The implementation is split by verification stage: `verify.rs` owns policy
+parsing and orchestration, `formats.rs` decodes SNP/HCL and quote structures,
+`crypto.rs` validates AMD certificate paths, `reference.rs` compares IMA
+measurements, `pcr.rs` replays PCR state, and `result.rs` defines structured
+checks and results. `lib.rs` exposes the public API. Larger unit tests live in
+`src/formats/tests.rs` and `src/reference/tests.rs`; installed-wheel tests
+and fixtures are under `tests/`.
+
 A `verified` result concerns evidence only. The caller must separately authenticate
 its actual TLS peer and decide whether to send credentials or application requests.
 The bounded Milan/Genoa SNP/HCL/vTPM profile and its coverage limits are described in the

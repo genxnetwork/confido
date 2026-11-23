@@ -3,10 +3,12 @@
 All evidence verification runs in a local Worker using packaged Rust/WASM.
 There is no native messaging host, remote verifier, content script or chat client.
 
-`src/ui.js` owns the page, file inputs and Worker calls. `src/collection.js`
-retrieves live inputs with explicit origin, size and time limits. `src/worker.js`
-checks the packaged runtime and invokes the shared verifier. `build.py` packages
-those sources with the Rust/WASM binding and browser manifests.
+`src/index.html`, `src/style.css`, and `src/ui.js` form the page and its
+file-input/Worker UI. `src/collection.js` retrieves live inputs with explicit
+origin, size and time limits. `src/worker.js` checks the packaged runtime and
+invokes the shared verifier; `src/background.js` opens the verifier page when
+the extension action is clicked. `build.py` packages those sources with the
+Rust/WASM binding and browser manifests.
 
 ## Build
 
