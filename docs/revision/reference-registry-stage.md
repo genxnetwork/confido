@@ -1,5 +1,10 @@
 # Genoa stage reference enrollment
 
+This document records the Confido verifier acceptance performed during the
+revision. The active Genoa stage policies, issuer decision and enrollment tool
+are owned by `confidential-ai-example`; see its
+`docs/genoa-stage-reference.md` for current rerun instructions.
+
 The public [Teraveri registry](https://github.com/teraveri/reference-value-registry)
 holds the exact reference bytes and a manifest describing their scope. GENXT
 endorses the manifest from its own
@@ -29,7 +34,7 @@ locally accepted key; it does not have the GitHub Actions OIDC provenance of
 the normal path below. The GENXT `master` rule still requires `test`.
 
 The working stage policy
-[`profiles/verifier-genoa-stage-registry.json`](../../profiles/verifier-genoa-stage-registry.json)
+`confidential-ai-example/profiles/verifier-genoa-stage-registry.json`
 pins the merged Teraveri `main` commit
 `3fa7913d44a377806bd94126589be1feb362b6cb`. The live Genoa positive and
 negative acceptance passed with this exact commit; see the
@@ -37,13 +42,15 @@ negative acceptance passed with this exact commit; see the
 policy, use:
 
 ```bash
-python3 scripts/enroll_reference.py \
+python3 ../confidential-ai-example/scripts/enroll_reference.py \
   --registry teraveri/reference-value-registry \
   --commit 3fa7913d44a377806bd94126589be1feb362b6cb \
   --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
   --issuer GENXT-manual \
   --registry-dir ../reference-value-registry \
-  --output profiles/verifier-genoa-stage-registry.json
+  --issuer-policy ../confidential-ai-example/profiles/reference-issuers-stage.json \
+  --platform ../confidential-ai-example/profiles/platform-genoa-stage.json \
+  --output ../confidential-ai-example/profiles/verifier-genoa-stage-registry.json
 ```
 
 `--registry-dir` requires a clean checkout at that exact commit. Python's
@@ -72,19 +79,21 @@ manual issuer decision in a new JAN policy review.
    mismatch writes nothing:
 
    ```bash
-   python3 scripts/enroll_reference.py \
+   python3 ../confidential-ai-example/scripts/enroll_reference.py \
      --registry teraveri/reference-value-registry \
      --commit FULL_REGISTRY_COMMIT_WITH_BUNDLE \
      --entry entries/azure-snp-vtpm-ima-1/azure-genoa-ubuntu2204-kernel-1071-stage \
      --gh /mnt/tools/gh_2.105.0_linux_amd64/bin/gh \
-     --output profiles/verifier-genoa-stage.json
+     --issuer-policy ../confidential-ai-example/profiles/reference-issuers-stage.json \
+     --platform ../confidential-ai-example/profiles/platform-genoa-stage.json \
+     --output ../confidential-ai-example/profiles/verifier-genoa-stage.json
    ```
 
    `gh` CLI is required for Sigstore verification. `--registry-dir` permits a
    clean local checkout at the exact selected commit. The issuer policy is
-   [`profiles/reference-issuers-stage.json`](../../profiles/reference-issuers-stage.json),
+   `confidential-ai-example/profiles/reference-issuers-stage.json`,
    and the observed platform enrollment is
-   [`profiles/platform-genoa-stage.json`](../../profiles/platform-genoa-stage.json).
+   `confidential-ai-example/profiles/platform-genoa-stage.json`.
    Revisit the platform values when the VM image or firmware changes.
    Other publishers use a separate locally approved issuer entry and
    `--issuer NAME`; the registry cannot add a trusted issuer by itself.
@@ -93,11 +102,11 @@ manual issuer decision in a new JAN policy review.
    references an older, incompatible IMA baseline:
 
    ```bash
-   ../confidential-ai-example/.venv/bin/python scripts/stage_demo.py \
+   ../confidential-ai-example/.venv/bin/python ../confidential-ai-example/scripts/stage_demo.py \
      --sidecar /tmp/ga4gh-service-info \
      --out /private/new-genoa-stage-run \
-     --match-verifier-policy profiles/verifier-genoa-stage.json \
-     --mismatch-verifier-policy profiles/verifier-genoa-stage-mismatch.json
+     --match-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage.json \
+     --mismatch-verifier-policy ../confidential-ai-example/profiles/verifier-genoa-stage-mismatch.json
    ```
 
    Save `acceptance.json` and the full hashes of Confido, sidecar, app/wheel,

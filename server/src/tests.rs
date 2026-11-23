@@ -72,7 +72,7 @@ fn creates_private_keys_with_owner_only_permissions() {
 
 #[test]
 fn generated_certificate_has_requested_subject_alternative_name() {
-    for hostname in ["match.demo.genxt.network", "127.0.0.1"] {
+    for hostname in ["collector.example.test", "127.0.0.1"] {
         let (certificate, private_key) = generate_certificate(hostname).unwrap();
         validate_leaf_certificate(&certificate).unwrap();
         let der = certificate.to_der().unwrap();

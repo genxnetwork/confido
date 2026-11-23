@@ -18,7 +18,8 @@ transcript stay at v1. Result, policy and archive schemas are now v2.
 | `application_admitted` in result | Separate application-decision-v2 record |
 | `timings_ms`, live/fresh/session claims | Caller measurements/context only |
 
-`profiles/{match,mismatch}.json` now point to neighboring `verifier-*.json` files.
+The demo's `confidential-ai-example/profiles/{match,mismatch}.json` point to
+neighboring `verifier-*.json` files.
 Root, launch/TCB enrollments and immutable reference bytes/digests are preserved.
 A schema-valid policy still undergoes semantic/path validation in Rust.
 

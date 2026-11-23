@@ -1,5 +1,5 @@
-// Deliberately limited to the configured demo services and their data sources.
-export const ORIGINS = ['https://match.demo.genxt.network', 'https://mismatch.demo.genxt.network'];
+import {SERVICES} from './config.js';
+export const ORIGINS = SERVICES.map(service => service.origin);
 export const DATA_ORIGINS = ['https://kdsintf.amd.com', 'https://api.github.com'];
 export const decode = value => Uint8Array.from(atob(value), c => c.charCodeAt(0));
 export function encode(bytes) {let text = ''; for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192)); return btoa(text);}

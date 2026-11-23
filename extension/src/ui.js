@@ -1,5 +1,17 @@
 import {collect, decode, ORIGINS, DATA_ORIGINS} from './collection.js';
+import {SERVICES} from './config.js';
 const $ = id => document.getElementById(id); let busy = false, record;
+for (const service of SERVICES) {
+  const option = document.createElement('option');
+  option.value = service.origin; option.textContent = service.origin;
+  $('origin').append(option);
+}
+function selectService() {
+  $('service').value = SERVICES.find(service => service.origin === $('origin').value)?.service_id ?? '';
+}
+$('origin').addEventListener('change', selectService);
+selectService();
+$('live').disabled = SERVICES.length === 0;
 function workerRpc() {
   const worker = new Worker(new URL('./worker.js', import.meta.url), {type: 'module'}), pending = new Map(); let seq = 0;
   worker.onmessage = ({data}) => {const task = pending.get(data.id); if (!task) return; clearTimeout(task.timer); pending.delete(data.id); data.error ? task.reject(Error(data.error)) : task.resolve(data.result);};

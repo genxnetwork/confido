@@ -17,8 +17,9 @@ from playwright.sync_api import sync_playwright, expect
 import confido_verifier
 from archive_inputs import migrate, arguments, encode
 ROOT=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('--bundle',type=Path);p.add_argument('--at',type=int);args=p.parse_args()
-policy=(ROOT/'profiles/verifier-match.json').read_bytes()
+p=argparse.ArgumentParser();p.add_argument('--bundle',type=Path);p.add_argument('--at',type=int);p.add_argument('--policy',type=Path);args=p.parse_args()
+if args.bundle and not args.policy:p.error('--bundle requires --policy matching the archive')
+policy=(args.policy or ROOT/'lib/tests/fixtures/verifier-policy-v2.json').read_bytes()
 values=[b'',b'',b'',b'',policy,bytes(32),1750000000]
 cases=[('missing_input',values)]
 if args.bundle:
@@ -82,7 +83,7 @@ try:
             ctx=p.chromium.launch_persistent_context(profile,channel='chromium',headless=True,args=[f'--disable-extensions-except={extension}',f'--load-extension={extension}'])
             worker=ctx.service_workers[0] if ctx.service_workers else ctx.wait_for_event('serviceworker')
             page=ctx.new_page();page.goto('chrome-extension://'+worker.url.split('/')[2]+'/index.html')
-            page.locator('#policy').set_input_files(ROOT/'profiles/verifier-match.json')
+            page.locator('#policy').set_input_files(args.policy or ROOT/'lib/tests/fixtures/verifier-policy-v2.json')
             empty={'schema_version':2,'inputs':{k:'' for k in ('report','amd_chain','vcek','reference')},'context':{'expected_nonce_base64':encode(bytes(32))}}
             page.locator('#archive').set_input_files({'name':'input.json','mimeType':'application/json','buffer':json.dumps(empty).encode()})
             page.locator('#time').fill('1750000000');page.locator('#replay').click()

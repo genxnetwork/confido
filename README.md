@@ -92,15 +92,17 @@ The WASM wrapper accepts `Uint8Array` inputs and returns a JSON string.
 ## CLI
 
 ```sh
-client/target/debug/confido_client collect profiles/match.json /private/new-archive.json
-client/target/debug/confido_client appraise profiles/match.json /private/new-run.json
-client/target/debug/confido_client verify profiles/verifier-match.json archive.json EXPECTED_NONCE_BASE64 UNIX_SECONDS
-client/target/debug/confido_client replay profiles/verifier-match.json archive.json UNIX_SECONDS
+client/target/debug/confido_client collect ../confidential-ai-example/profiles/match.json /private/new-archive.json
+client/target/debug/confido_client appraise ../confidential-ai-example/profiles/match.json /private/new-run.json
+client/target/debug/confido_client verify ../confidential-ai-example/profiles/verifier-match.json archive.json EXPECTED_NONCE_BASE64 UNIX_SECONDS
+client/target/debug/confido_client replay ../confidential-ai-example/profiles/verifier-match.json archive.json UNIX_SECONDS
 client/target/debug/confido_client migrate-archive old-v1.json new-v2.json UNIX_SECONDS
 ```
 
 `appraise` collects and verifies evidence only. `replay` deliberately uses a
 historical archived nonce; neither command grants live application access.
+The paths above are GENXT demo policies owned by `confidential-ai-example`;
+Confido consumes caller-supplied policy bytes and does not own their trust pins.
 Archives are created exclusively with mode 0600. Raw report/reference bytes are
 preserved in schema v2. CLI accepts legacy archives through its caller-side adapter.
 

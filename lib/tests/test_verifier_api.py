@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import unittest
 import confido_verifier as verifier
-POLICY = (Path(__file__).resolve().parents[2]/"profiles/verifier-match.json").read_bytes()
+POLICY = (Path(__file__).resolve().parent/"fixtures/verifier-policy-v2.json").read_bytes()
 class VerifierTests(unittest.TestCase):
     def call(self, report=b"", nonce=bytes(32), at=1750000000):
         return verifier.verify(report, b"", b"", b"", POLICY, nonce, at)

@@ -6,7 +6,7 @@ Observed implementation run: **2026-09-23**. See [results](results.md) and the [
 |---|---|---|---|
 | Pinned AMD root, endorsement signatures/validity and VCEK chip/TCB/product correspondence | `lib/src/profile.rs`, `appraisal.rs` | real hardware acceptance; root/chip/date mutations in `replay-checks.json` | implemented and tested |
 | SNP signature, HCL variable-data binding and recovered vTPM AK | `evidence.rs`, `profile.rs` | SNP-signature/HCL-AK substitutions; genuine fresh collection | implemented and tested |
-| Explicit debug/migration/VMPL, launch measurement and minimum TCB policy | `profile.rs`, `profiles/*.json` | direct policy vectors; valid hardware evidence rejected under incompatible launch/TCB policy | implemented and tested |
+| Explicit debug/migration/VMPL, launch measurement and minimum TCB policy | `profile.rs`, `confidential-ai-example/profiles/*.json` | direct policy vectors; valid hardware evidence rejected under incompatible launch/TCB policy | implemented and tested |
 | Signed quote, nonce/certificate/log binding, PCR bank/selection | `quote.rs`, `nonce.rs`, `vtpm.rs` | RSA-signed fixture mutations, independent transcript vector, live quote, hardware replay mutations | implemented and tested |
 | Exact IMA reference, boot aggregate and PCR 10 | `trs.rs`, `evidence.rs` | replay/enrolled-PCR tests; match and deliberate mismatch through the same verifier | implemented and tested |
 | Immutable reference identity and content | `appraisal.rs` | commit/path/digest pinning; reference/origin substitution rejection | implemented and tested |

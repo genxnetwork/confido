@@ -129,7 +129,7 @@ make -C bindings/python install PROFILE=dev PYTHON="$VIRTUAL_ENV/bin/python"
 python -m unittest discover -s lib/tests -v
 python3 extension/build.py --browser chromium
 python3 extension/build.py --browser firefox
-python scripts/replay_checks.py "$PRIVATE_ARCHIVE" profiles/verifier-match.json \
+python scripts/replay_checks.py "$PRIVATE_ARCHIVE" ../confidential-ai-example/profiles/verifier-match.json \
   --at 1790178810 --output /private/replay-results.json --samples 30
 python scripts/browser_checks.py --bundle "$PRIVATE_ARCHIVE" --at 1790178810
 ```

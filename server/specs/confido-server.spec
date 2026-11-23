@@ -22,10 +22,6 @@ install -m 0755 %{buildroot}/../../../server/target/release/confido-server %{bui
 install -d %{buildroot}%{_licensedir}/%{name}
 install -m 0644 %{SOURCE0} %{SOURCE1} %{buildroot}%{_licensedir}/%{name}/
 tar -xzf %{SOURCE2} -C %{buildroot}%{_licensedir}/%{name}/
-#mkdir -p %{buildroot}/etc/systemd/system
-#install -m 0644 %{buildroot}/../../../server/deployment/systemd-confido.service %{buildroot}/etc/systemd/system/confido.service
-#mkdir -p %{buildroot}/usr/share/doc/confido-server
-#install -m 0644 %{buildroot}/../../../server/deployment/nginx-confido.conf %{buildroot}/usr/share/doc/confido-server/nginx-confido.conf
 
 %post
 #if [ "$1" -eq 1 ] ; then
@@ -37,8 +33,6 @@ tar -xzf %{SOURCE2} -C %{buildroot}%{_licensedir}/%{name}/
 %files
 %license %{_licensedir}/%{name}
 /usr/local/bin/confido-server
-#/etc/systemd/system/confido.service
-#/usr/share/doc/confido-server/nginx-confido.conf
 
 %changelog
 * $(date "+%a %b %d %Y") Grigorii Bezborodov <g.bezborodov@genxnetwork.io> - 1.0.0-1

@@ -11,6 +11,8 @@ cargo install wasm-bindgen-cli --version 0.2.100 --locked
 python3 extension/build.py --browser chromium
 python3 extension/build.py --browser firefox
 python3 extension/build.py --browser safari
+# Optional GENXT live-demo build, using application-owned host configuration:
+python3 extension/build.py --browser chromium --services-config ../confidential-ai-example/deploy/genxt-demo/extension-services.json
 ```
 
 Run from the repository root with clang installed. Outputs are under
@@ -24,14 +26,18 @@ CSP permits WASM compilation and forbids remotely hosted scripts.
   and build/sign the generated Xcode project. Native packaging is required by
   Safari; the verifier itself remains WASM. Safari acceptance is pending macOS.
 
-Open the extension action, select `profiles/verifier-match.json` or
-`verifier-mismatch.json`, then choose live collection or historical replay.
+Without `--services-config`, the extension supports local historical replay.
+For live collection, supply an approved service list at build time and select
+a caller-owned verifier policy, such as the adjacent
+`confidential-ai-example/profiles/verifier-match.json`. The build places only
+those configured service origins in the optional host permissions and runtime
+allowlist. The extension does not infer trust policy from the service.
 Replay requires a v2 archive and an explicit evaluation timestamp; old embedded
 results are ignored and all raw inputs are reverified. Convert v1 archives with
 the CLI's `migrate-archive` command. Imported policies are explicitly user-selected
 trust configuration and are not obtained from the service.
 
-Live collection requests optional permission only for the selected demo hostname,
+Live collection requests optional permission only for the selected configured hostname,
 AMD KDS and GitHub. Credentials/cookies are omitted; redirects, oversized inputs
 and expired requests are rejected. A closed/restarted page loses pending challenges.
 The configured endpoints must have HTTPS certificates accepted by the browser.
@@ -57,7 +63,8 @@ actual Chromium MV3 extension to verify CSP and archive UI. Real Safari and publ
 HTTPS delivery require separate environment acceptance. Linux Firefox worker
 coverage alone is not a claim of signed Firefox store-package acceptance.
 
-An opt-in public integration test is `python scripts/browser_live_checks.py`. It
+The GENXT example owns the opt-in public integration test at
+`confidential-ai-example/scripts/browser_live_checks.py`. It
 pregrants exactly the four declared optional hosts in a temporary test package;
 production permissions remain optional. It checks live match/mismatch without
 credentials, prompts, or certificate-error bypass. This tests delivery and local
