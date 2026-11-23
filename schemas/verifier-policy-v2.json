@@ -18,7 +18,8 @@
       "properties": {
         "product": {
           "enum": [
-            "Milan"
+            "Milan",
+            "Genoa"
           ]
         },
         "ark_sha256": {

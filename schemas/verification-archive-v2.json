@@ -213,7 +213,8 @@
                 },
                 "product": {
                   "enum": [
-                    "Milan"
+                    "Milan",
+                    "Genoa"
                   ]
                 },
                 "reported_tcb": {

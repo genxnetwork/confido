@@ -6,7 +6,7 @@ Confido is a portable **evidence verifier**. It accepts bytes, locally selected
 policy, an independent expected nonce and explicit evaluation time. It returns an
 `evidence_only` result. It opens no connection and creates no application session.
 
-The supported profile is `azure-snp-vtpm-ima/1`: pinned AMD Milan ARK → ASK → VCEK
+The supported profile is `azure-snp-vtpm-ima/1`: pinned AMD Milan or Genoa ARK → ASK → VCEK
 → SNP report → Azure HCL → vTPM AK → quote → PCR/IMA/reference checks. Wire v1 and
 its existing certificate/IMA transcript are preserved.
 

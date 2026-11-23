@@ -48,4 +48,13 @@ class VerifierTests(unittest.TestCase):
     def test_inspection_never_accepts_malformed_report(self):
         for raw in (b"", b"{}", b"null", b"[]"):
             with self.assertRaises(ValueError): verifier.inspect_requirements(raw)
+    def test_policy_product_is_explicit_and_bounded(self):
+        policy = json.loads(POLICY)
+        for product in ("Milan", "Genoa"):
+            policy["platform"]["product"] = product
+            result = verifier.verify(b"", b"", b"", b"", json.dumps(policy).encode(), bytes(32), 1750000000)
+            self.assertEqual(result["status"], "incomplete_input")
+        policy["platform"]["product"] = "Turin"
+        with self.assertRaises(ValueError):
+            verifier.verify(b"", b"", b"", b"", json.dumps(policy).encode(), bytes(32), 1750000000)
 if __name__ == "__main__": unittest.main()

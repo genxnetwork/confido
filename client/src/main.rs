@@ -150,7 +150,11 @@ async fn collect(path: &Path) -> Result<(Value, Vec<u8>)> {
     }
     let report = body(response, MAX_BODY).await?;
     let req = confido::inspect_requirements(&report)?;
-    let base = "https://kdsintf.amd.com/vcek/v1/Milan";
+    let product = req.product.as_deref().unwrap_or(&p.platform.product);
+    if product != p.platform.product {
+        return Err("Signed SNP processor differs from enrolled product".into());
+    }
+    let base = format!("https://kdsintf.amd.com/vcek/v1/{product}");
     let chain = kds(&public, &format!("{base}/cert_chain")).await?;
     let vcek = kds(
         &public,

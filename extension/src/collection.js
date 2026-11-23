@@ -38,8 +38,9 @@ export async function collect(endpoint, serviceId, policyBytes, rpc) {
     const report = await fetchBytes(endpoint + '/tee-report', {body: {nonce: encode(nonce)}, signal});
     if (!report.headers.get('cache-control')?.split(',').some(s => s.trim().toLowerCase() === 'no-store')) throw Error('Missing no-store');
     const hints = await rpc('inspect', {report: report.bytes});
-    if (hints.trusted !== false || hints.product !== 'Milan' || !/^[a-f0-9]{128}$/.test(hints.chip_id) || hints.tcb.length !== 4 || !hints.tcb.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) throw Error('Invalid KDS selectors');
-    const base = DATA_ORIGINS[0] + '/vcek/v1/Milan';
+    const product = hints.product ?? policy.platform?.product;
+    if (hints.trusted !== false || !['Milan', 'Genoa'].includes(product) || product !== policy.platform?.product || !/^[a-f0-9]{128}$/.test(hints.chip_id) || hints.tcb.length !== 4 || !hints.tcb.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) throw Error('Invalid KDS selectors');
+    const base = DATA_ORIGINS[0] + '/vcek/v1/' + product;
     const chain = await kds(base + '/cert_chain', signal);
     const query = ['blSPL', 'teeSPL', 'snpSPL', 'ucodeSPL'].map((k, i) => `${k}=${String(hints.tcb[i]).padStart(2, '0')}`).join('&');
     const vcek = await kds(`${base}/${hints.chip_id}?${query}`, signal);

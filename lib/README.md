@@ -10,12 +10,13 @@ Legacy connection APIs were removed; see [migration](../docs/migration-0.2.md).
 
 A `verified` result concerns evidence only. The caller must separately authenticate
 its actual TLS peer and decide whether to send credentials or application requests.
-The fixed Milan SNP/HCL/vTPM profile and its coverage limits are described in the
+The bounded Milan/Genoa SNP/HCL/vTPM profile and its coverage limits are described in the
 [repository README](../README.md).
 
 The decoder accepts SNP report versions 2, 3 and 5. Version 5 preserves the
-Milan field offsets and signature boundary used here (AMD [ABI 1.58, table
+SNP field offsets and signature boundary used here (AMD [ABI 1.58, table
 23](https://www.amd.com/content/dam/amd/en/documents/developer/56860.pdf)).
 Mitigation vectors, SEV-TIO and page-swap policy are not appraised or claimed.
-Other report versions remain rejected; support does not extend the pinned Milan
-endorsement chain to other processor families.
+Other report versions and processor products remain rejected. Each supported
+product requires its own locally enrolled AMD ARK digest, launch measurement,
+TCB floor and IMA reference; a Milan enrollment cannot authorize Genoa.

@@ -155,6 +155,20 @@ history. GitHub issue/PR, pushes, tags and package publication remain outstandin
 Historical reports under `docs/revision/` and `docs/design/` retain their original
 version labels and do not certify this combined tree.
 
+### Genoa extension, 2026-11-23
+
+The later Genoa change is recorded separately in
+[`decisions/002-amd-product-selection.md`](revision/decisions/002-amd-product-selection.md).
+The earlier Milan-only hardware result above describes the preceding revision.
+On the current Genoa VM (SNP v5, CPUID family `0x19` model `0x11`), fresh evidence
+passed all 12 verifier stages with a **local test enrollment**. An isolated
+localhost application run admitted the positive case and sent one synthetic
+request; the negative Genoa case reached IMA/PCR appraisal and was denied
+without an application request. Historical Milan replay still passed 28 cases.
+The public reference at the existing commit remains the prior enrollment;
+independent review/publication of a Genoa reference is required before public
+Genoa positive admission. No public service configuration changed.
+
 ## Later execution trust work
 
 Veraison, CoCo/Trustee and Keylime integration follows a defined evidence/result

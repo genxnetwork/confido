@@ -48,7 +48,7 @@ impl VerifierPolicy {
                 && s.bytes()
                     .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
         }
-        if self.schema_version != 2 || self.profile != PROFILE || self.platform.product != "Milan" {
+        if self.schema_version != 2 || self.profile != PROFILE || !["Milan", "Genoa"].contains(&self.platform.product.as_str()) {
             return Err("Unsupported verifier policy/profile".into());
         }
         if !hex(&self.platform.ark_sha256, 64)
@@ -80,7 +80,7 @@ pub struct VerificationContext {
 pub struct Requirements {
     pub trusted: bool,
     pub profile: String,
-    pub product: String,
+    pub product: Option<String>,
     pub chip_id: String,
     pub tcb: [u8; 4],
 }
@@ -91,11 +91,11 @@ pub fn inspect_requirements(report_json: &[u8]) -> Result<Requirements, Verifica
     let response: AttestationResponse =
         serde_json::from_slice(report_json).map_err(|e| VerificationError(e.to_string()))?;
     let snp = formats::snp(&response.evidence.report).map_err(VerificationError)?;
-    snp.require_milan().map_err(VerificationError)?;
+    let product = snp.product_hint().map_err(VerificationError)?;
     Ok(Requirements {
         trusted: false,
         profile: PROFILE.into(),
-        product: "Milan".into(),
+        product: product.map(str::to_owned),
         chip_id: hex::encode(snp.chip),
         tcb: snp.tcb,
     })
@@ -203,12 +203,16 @@ fn verify_inner(
         "malformed_hcl",
         formats::snp(&response.evidence.report)
     );
-    check!(
+    let product_hint = check!(
         Stage::SnpReport,
         Status::UnsupportedProfile,
         "unsupported_processor",
-        snp.require_milan()
+        snp.product_hint()
     );
+    if product_hint.is_some_and(|product| product != p.platform.product) {
+        r.fail(Stage::SnpReport, Status::PolicyMismatch, "platform_product_mismatch", "Signed SNP processor differs from enrolled product".into());
+        return;
+    }
     let chain = check!(
         Stage::Endorsements,
         Status::InvalidEvidence,
@@ -275,7 +279,7 @@ fn verify_inner(
         Stage::VcekCorrespondence,
         Status::InvalidEvidence,
         "endorsement_report_mismatch",
-        correspondence(&snp, &vcek)
+        correspondence(&snp, &vcek, &p.platform.product)
     );
     r.pass(
         Stage::VcekCorrespondence,
@@ -302,7 +306,7 @@ fn verify_inner(
         Stage::PlatformPolicy,
         "Enrolled launch measurement and minimum TCB; VMPL 0, debug/migration disabled",
     );
-    r.verified_claims = json!({"platform":{"stage":"snp_signature","product":"Milan","reported_tcb":snp.tcb,"launch_measurement":hex::encode(snp.measurement)}});
+    r.verified_claims = json!({"platform":{"stage":"snp_signature","product":p.platform.product,"reported_tcb":snp.tcb,"launch_measurement":hex::encode(snp.measurement)}});
     let h = check!(
         Stage::HclKey,
         Status::InvalidEvidence,
@@ -459,6 +463,7 @@ fn verify_inner(
 fn correspondence(
     s: &formats::Snp<'_>,
     v: &x509_parser::certificate::X509Certificate<'_>,
+    expected_product: &str,
 ) -> Result<(), String> {
     let value = |suffix: &str| -> Result<&[u8], String> {
         let oid = format!("1.3.6.1.4.1.3704.1.{suffix}");
@@ -483,10 +488,14 @@ fn correspondence(
         return Err("Unsupported VCEK version".into());
     }
     let product = value("2")?;
+    let name = product.get(2..).unwrap_or_default();
+    let expected = expected_product.as_bytes();
+    let revision = name.strip_prefix(expected).unwrap_or_default();
     if product.len() < 2
         || product[0] != 0x16
-        || product[1] as usize != product.len() - 2
-        || !product[2..].starts_with(b"Milan-")
+        || product[1] as usize != name.len()
+        || !(name == expected || (revision.starts_with(b"-") && revision.len() > 1
+            && revision[1..].iter().all(u8::is_ascii_alphanumeric)))
     {
         return Err("VCEK product mismatch".into());
     }

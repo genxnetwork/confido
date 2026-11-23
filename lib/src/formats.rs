@@ -27,16 +27,20 @@ pub(crate) struct Snp<'a> {
     pub report_data: &'a [u8],
 }
 impl Snp<'_> {
-    pub(crate) fn require_milan(&self) -> Result<()> {
-        // CPUID is absent in v2; its product is established by the pinned
-        // Milan chain and VCEK correspondence. v3/v5 also carry family/model.
-        if self.version >= 3 && (self.raw[392] != 0x19 || self.raw[393] > 0x0f) {
-            return Err(format!(
-                "Unsupported SNP processor family {:#04x}, model {:#04x}; this profile requires Milan",
-                self.raw[392], self.raw[393]
-            ));
+    pub(crate) fn product_hint(&self) -> Result<Option<&'static str>> {
+        // v2 has no CPUID. Its product must be established by the enrolled
+        // policy and the authenticated VCEK product extension instead.
+        if self.version == 2 {
+            return Ok(None);
         }
-        Ok(())
+        let product = match (self.raw[392], self.raw[393]) {
+            (0x19, 0x00..=0x0f) => "Milan",
+            (0x19, 0x10..=0x1f | 0xa0..=0xaf) => "Genoa",
+            (family, model) => return Err(format!(
+                "Unsupported SNP processor family {family:#04x}, model {model:#04x}"
+            )),
+        };
+        Ok(Some(product))
     }
 }
 pub(crate) struct Hcl<'a> {
@@ -121,7 +125,7 @@ pub(crate) fn snp(b: &[u8]) -> Result<Snp<'_>> {
         chip: bytes(s, 416, 64)?,
         report_data: bytes(s, 80, 64)?,
     };
-    // AMD ABI 1.58, table 23: v5 retains the Milan field offsets and the
+    // AMD ABI 1.58, table 23: v5 retains these SNP field offsets and the
     // 0x000..0x29f signed region. Its mitigation vectors are authenticated
     // by the signature but are not appraised by this bounded profile.
     if ![2, 3, 5].contains(&snp.version) {

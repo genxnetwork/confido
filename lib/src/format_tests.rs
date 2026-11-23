@@ -230,7 +230,7 @@ fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
         assert_eq!(snp.measurement, &[0x11; 48]);
         assert_eq!(snp.chip, &[0x22; 64]);
         assert_eq!(snp.report_data, &[0x33; 64]);
-        snp.require_milan().unwrap();
+        assert_eq!(snp.product_hint().unwrap(), if version == 2 { None } else { Some("Milan") });
         crate::crypto::snp_signature(&snp, &cert).unwrap();
         // Version, established fields and v5's new fields are all signed.
         for offset in [0, 80, 144, 384, 416, 480, 504, 512, 671, 672, 744] {
@@ -251,22 +251,27 @@ fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
 }
 
 #[test]
-fn milan_profile_rejects_other_reported_processors() {
+fn processor_product_selection_is_bounded() {
     let mut b = vec![0; 1236];
     b[1224..1228].copy_from_slice(&2u32.to_le_bytes());
     b[1228..1232].copy_from_slice(&1u32.to_le_bytes());
     b[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
     for version in [3u32, 5] {
         b[32..36].copy_from_slice(&version.to_le_bytes());
-        for (family, model) in [(0x19, 0x11), (0x1a, 0x01), (0, 0)] {
+        for (family, model, expected) in [(0x19, 0x01, Some("Milan")), (0x19, 0x11, Some("Genoa")), (0x19, 0xa0, Some("Genoa"))] {
             b[32 + 392] = family;
             b[32 + 393] = model;
-            assert!(super::snp(&b).unwrap().require_milan().is_err());
+            assert_eq!(super::snp(&b).unwrap().product_hint().unwrap(), expected);
+        }
+        for (family, model) in [(0x19, 0x20), (0x1a, 0x01), (0, 0)] {
+            b[32 + 392] = family;
+            b[32 + 393] = model;
+            assert!(super::snp(&b).unwrap().product_hint().is_err());
         }
     }
-    // No CPUID in v2: chain validation must still establish Milan.
+    // No CPUID in v2: chain validation must establish the enrolled product.
     b[32..36].copy_from_slice(&2u32.to_le_bytes());
-    super::snp(&b).unwrap().require_milan().unwrap();
+    assert_eq!(super::snp(&b).unwrap().product_hint().unwrap(), None);
 }
 #[test]
 fn binding_v1_serialization_matches_existing_vector() {

@@ -6,7 +6,7 @@ Reviewer identity: **pending**. Date/sign-off: **pending**. The implementation r
 2. Install the frozen Rust/Python target and native requirements. Run locked Rust tests/builds and the sidecar Go tests. Preserve complete logs and exit codes.
 3. Build/install the 0.3.0 wheel. Run `lib/tests` and the chat example's `tests`. Run `scripts/preflight.py` with that installed wheel for synchronized templates and version checks.
 4. Build the chat container (`make build` in the sibling example). Preserve the wheel hash, requirements lock, base/application image identifiers, package list and generated build manifest. The container image is the frozen runtime artifact; rebuilding apt-installed runtime packages at another date may change the image. Retain/export the exact image for offline reproduction.
-5. On a compatible Azure Milan SNP/HCL/vTPM VM with the enrolled IMA state, run the isolated harness. It requires root TPM access, Nginx, ports 18001/18082/18083/19091/19092/18443/18444/14000 free, and HTTPS access to AMD KDS and the pinned GitHub reference. KDS receives the hardware identifier and TCB versions to retrieve the public VCEK.
+5. On a compatible Azure Milan or Genoa SNP/HCL/vTPM VM with the independently enrolled product-specific AMD root, launch measurement, TCB floor and IMA state, run the isolated harness. It requires root TPM access, Nginx, ports 18001/18082/18083/19091/19092/18443/18444/14000 free, and HTTPS access to AMD KDS and the pinned GitHub reference. KDS receives the hardware identifier and TCB versions to retrieve the public VCEK.
 
    ```sh
    (cd ../ga4gh_service_info_sidecar_gsoc_2026 && go build -trimpath -o /tmp/ga4gh-service-info ./cmd/server)
