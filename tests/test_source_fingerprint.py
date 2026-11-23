@@ -19,6 +19,9 @@ class SourceFingerprintTests(unittest.TestCase):
                 "lib/Cargo.lock",
                 "protocol/src/lib.rs",
                 "protocol/Cargo.toml",
+                "evidence-core/src/lib.rs",
+                "evidence-core/Cargo.toml",
+                "evidence-core/Cargo.lock",
             ):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -29,6 +32,10 @@ class SourceFingerprintTests(unittest.TestCase):
             self.assertEqual(fingerprint(root, "core"), original)
 
             (root / "lib/Cargo.lock").write_text("changed build dependencies")
+            self.assertNotEqual(fingerprint(root, "core"), original)
+
+            (root / "lib/Cargo.lock").write_text("lib/Cargo.lock")
+            (root / "evidence-core/src/lib.rs").write_text("changed shared checks")
             self.assertNotEqual(fingerprint(root, "core"), original)
 
 

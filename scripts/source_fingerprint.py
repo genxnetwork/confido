@@ -7,7 +7,7 @@ from pathlib import Path
 
 def files(root, scope):
     scopes = {
-        "core": ["lib", "protocol"],
+        "core": ["lib", "protocol", "evidence-core"],
         "python": ["bindings/python"],
         "wasm": ["bindings/wasm"],
         "cli": ["client"],

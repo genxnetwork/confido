@@ -48,7 +48,8 @@ own compatibility rules.
 | Component | Current responsibility | Destination |
 |---|---|---|
 | `lib/` | Deterministic bytes/policy/nonce/time verification | Confido, then GENXT upstream |
-| `protocol/` | Shared evidence wire and binding types | Shared contract; packaging decided during extraction |
+| `protocol/` | Shared evidence wire and binding types | Future common package with `evidence-core/` |
+| `evidence-core/` | Shared bounded parsing and snapshot consistency checks | Future common package with `protocol/` |
 | `bindings/python/`, `bindings/wasm/` | Thin wrappers over the same verifier | Confido |
 | `server/` | Native SNP/vTPM/IMA collection and report endpoint | JAN Attestor |
 | `client/` | Evidence retrieval, offline verification and replay | Split caller/verification ownership during extraction |
@@ -58,6 +59,12 @@ The native chat transport belongs to `confidential-ai-example`. Flint retains
 its own repository history. New integration results must identify
 the actual revisions used; historical cross-repository reports are not current
 acceptance evidence.
+
+The collector now depends on `protocol/` and `evidence-core/`, without a direct
+dependency on the full Confido verifier. A future common repository should move
+these two crates together: the evidence core uses the wire types and transcript
+defined by the protocol crate. Version both against the same wire/binding
+contract before updating Confido and Attestor independently.
 
 Old Docker inventory and dmesg implementations remain in Git history. They are
 not authenticated evidence in the supported profile and are absent from the
@@ -77,9 +84,9 @@ access policy and a separate claim boundary.
   recorded separately from unit tests. Unavailable checks remain explicit.
 - The extraction checkpoint is committed and reproducible before creating Attestor.
 
-## Latest dated validation
+## Dated validation
 
-The latest dated local baseline is Confido
+The pre-extraction local baseline is Confido
 `402f252bf4a49da83c9bc91eaa12d6eb3a6c37fa` and
 `confidential-ai-example` `54813aca0047d780177eac5930223b030fd0d318`
 on kernel `6.8.0-1071-azure-fde`. The
@@ -88,6 +95,11 @@ pins the source, policies, binaries, wheels and run artifacts; the earlier
 [manual-reference acceptance](revision/acceptance-genoa-manual-20261123.md)
 records the initial publisher path. These records validate their pinned
 revisions, not later edits in this working tree.
+
+The [shared evidence core acceptance](revision/acceptance-shared-core-genoa-20261123.md)
+records a later isolated Genoa match/mismatch and 27-case replay after the
+collector stopped depending on the full verifier. It validates the installed
+wheel path, but does not repeat the earlier container or browser runs.
 
 At that baseline, locked native and Python tests, dependency guards, CLI/Python
 and Chromium/Firefox parity, native transport, and downstream application

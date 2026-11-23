@@ -342,4 +342,47 @@ mod tests {
         )
         .is_err());
     }
+
+    #[test]
+    fn snp_signature_covers_supported_report_versions() {
+        use openssl::{
+            ec::{EcGroup, EcKey},
+            ecdsa::EcdsaSig,
+            nid::Nid,
+        };
+
+        let group = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
+        let ec = EcKey::generate(&group).unwrap();
+        let key = PKey::from_ec_key(ec.clone()).unwrap();
+        // This certificate tests report signature encoding, not AMD trust.
+        let cert_der = make("synthetic SNP signer", &key, None, false, 0)
+            .to_der()
+            .unwrap();
+        let signer = cert(&cert_der).unwrap();
+        let mut report = vec![0; 1236];
+        report[1224..1228].copy_from_slice(&2u32.to_le_bytes());
+        report[1228..1232].copy_from_slice(&1u32.to_le_bytes());
+        report[32 + 52..32 + 56].copy_from_slice(&1u32.to_le_bytes());
+
+        for version in [2u32, 3, 5] {
+            report[32..36].copy_from_slice(&version.to_le_bytes());
+            let sig = EcdsaSig::sign(&openssl::sha::sha384(&report[32..32 + 672]), &ec).unwrap();
+            for (at, value) in [(672, sig.r()), (744, sig.s())] {
+                let mut little_endian = value.to_vec_padded(48).unwrap();
+                little_endian.reverse();
+                report[32 + at..32 + at + 48].copy_from_slice(&little_endian);
+            }
+            let parsed = crate::formats::snp(&report).unwrap();
+            snp_signature(&parsed, &signer).unwrap();
+
+            // Fields through byte 671 are signed; signature fields are checked too.
+            for offset in [0, 80, 144, 384, 416, 480, 504, 512, 671, 672, 744] {
+                let mut changed = report.clone();
+                changed[32 + offset] ^= 1;
+                assert!(crate::formats::snp(&changed)
+                    .and_then(|parsed| snp_signature(&parsed, &signer))
+                    .is_err());
+            }
+        }
+    }
 }

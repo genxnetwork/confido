@@ -4,6 +4,7 @@ Use the pinned Rust toolchain in `rust-toolchain.toml`. Each package has its own
 Cargo manifest and lockfile. Run commands from the repository root.
 
 ```sh
+cargo test --locked --manifest-path evidence-core/Cargo.toml
 cargo test --locked --manifest-path lib/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml
 cargo test --locked --manifest-path server/Cargo.toml
@@ -27,7 +28,8 @@ python -m unittest discover -s server/tests -v
 
 Rust tests that need private functions live in the owning module: short tests
 stay inline, while larger suites use a `tests.rs` child module. Installed-wheel
-API tests and fixtures live in `lib/tests`; the launcher tests live in
+API tests and fixtures live in `lib/tests`; evidence parser and quote tests live
+in `evidence-core/src/formats/tests.rs`, while launcher tests live in
 `server/tests`. Repository-wide build checks live in `tests`. Browser and replay
 checks are explicit integration commands under `scripts`.
 

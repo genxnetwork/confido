@@ -4,8 +4,8 @@ use confido_protocol::{Algorithm, Evidence, Quote};
 use ring::{digest, signature};
 use serde::Deserialize;
 
-pub(crate) type Result<T> = std::result::Result<T, String>;
-pub(crate) fn bytes(b: &[u8], at: usize, n: usize) -> Result<&[u8]> {
+pub type Result<T> = std::result::Result<T, String>;
+pub fn bytes(b: &[u8], at: usize, n: usize) -> Result<&[u8]> {
     b.get(at..at.checked_add(n).ok_or("Length overflow")?)
         .ok_or_else(|| "Truncated binary structure".into())
 }
@@ -15,7 +15,7 @@ fn le32(b: &[u8], at: usize) -> Result<u32> {
     ))
 }
 #[derive(Debug)]
-pub(crate) struct Snp<'a> {
+pub struct Snp<'a> {
     pub raw: &'a [u8],
     pub version: u32,
     pub vmpl: u32,
@@ -27,7 +27,7 @@ pub(crate) struct Snp<'a> {
     pub report_data: &'a [u8],
 }
 impl Snp<'_> {
-    pub(crate) fn product_hint(&self) -> Result<Option<&'static str>> {
+    pub fn product_hint(&self) -> Result<Option<&'static str>> {
         // v2 has no CPUID. Its product must be established by the enrolled
         // policy and the authenticated VCEK product extension instead.
         if self.version == 2 {
@@ -45,7 +45,7 @@ impl Snp<'_> {
         Ok(Some(product))
     }
 }
-pub(crate) struct Hcl<'a> {
+pub struct Hcl<'a> {
     pub snp: Snp<'a>,
     pub var_hash: Vec<u8>,
     pub n: Vec<u8>,
@@ -85,7 +85,7 @@ fn integer(n: &[u8]) -> Vec<u8> {
     }
     der(2, &b)
 }
-pub(crate) fn rsa_spki(n: &[u8], e: &[u8]) -> Vec<u8> {
+pub fn rsa_spki(n: &[u8], e: &[u8]) -> Vec<u8> {
     let rsa = der(0x30, &[integer(n), integer(e)].concat());
     let bits = der(3, &[vec![0], rsa].concat());
     der(
@@ -100,7 +100,7 @@ pub(crate) fn rsa_spki(n: &[u8], e: &[u8]) -> Vec<u8> {
         .concat(),
     )
 }
-pub(crate) fn snp(b: &[u8]) -> Result<Snp<'_>> {
+pub fn snp(b: &[u8]) -> Result<Snp<'_>> {
     if !(1236..=65536).contains(&b.len()) {
         return Err("Invalid HCL report size".into());
     }
@@ -136,7 +136,7 @@ pub(crate) fn snp(b: &[u8]) -> Result<Snp<'_>> {
     Ok(snp)
 }
 
-pub(crate) fn hcl(b: &[u8]) -> Result<Hcl<'_>> {
+pub fn hcl(b: &[u8]) -> Result<Hcl<'_>> {
     let snp = snp(b)?;
     let var = bytes(b, 1236, le32(b, 1232)? as usize)?;
     let keys: Keys = serde_json::from_slice(var).map_err(|e| e.to_string())?;
@@ -205,11 +205,11 @@ impl<'a> Cursor<'a> {
         self.take(n)
     }
 }
-pub(crate) struct SignedQuote<'a> {
+pub struct SignedQuote<'a> {
     challenge: &'a [u8],
     pcr_data: &'a [u8],
 }
-pub(crate) fn quote_signature<'a>(q: &'a Quote, n: &[u8], e: &[u8]) -> Result<SignedQuote<'a>> {
+pub fn quote_signature<'a>(q: &'a Quote, n: &[u8], e: &[u8]) -> Result<SignedQuote<'a>> {
     if q.message.len() > 4096
         || q.signature.len() > 1024
         || q.pcr_banks.is_empty()
@@ -245,7 +245,7 @@ pub(crate) fn quote_signature<'a>(q: &'a Quote, n: &[u8], e: &[u8]) -> Result<Si
         pcr_data: &q.message[c.p..],
     })
 }
-pub(crate) fn quoted_pcrs(signed: &SignedQuote<'_>, q: &Quote) -> Result<()> {
+pub fn quoted_pcrs(signed: &SignedQuote<'_>, q: &Quote) -> Result<()> {
     let mut c = Cursor {
         b: signed.pcr_data,
         p: 0,
@@ -290,7 +290,7 @@ pub(crate) fn quoted_pcrs(signed: &SignedQuote<'_>, q: &Quote) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn snapshot_binding(
+pub fn snapshot_binding(
     signed: &SignedQuote<'_>,
     evidence: &Evidence,
     nonce: &[u8],

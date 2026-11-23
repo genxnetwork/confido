@@ -10,7 +10,7 @@ name = "confido-server"
 path = "src/main.rs"
 
 [dependencies]
-confido = { path = "../lib" }
+attestation-evidence-core = { path = "../evidence-core" }
 az-snp-vtpm = { git = "https://github.com/kinvolk/azure-cvm-tooling", rev = "9c6bff6c959994da280f8b3b5bad62a1600063d0", features = ["attester"] }
 openssl = { version = "0.10", features = ["vendored"] }
 serde = "1.0"

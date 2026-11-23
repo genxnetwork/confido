@@ -126,7 +126,11 @@ impl Attester {
                     Evidence::new(report, quote, serde_json::Value::Null, order, measurements);
                 // TPM quote and PCR read are separate commands. Verify their
                 // signed digest and selection before returning a snapshot.
-                confido::verify_snapshot(&evidence, nonce.as_bytes(), &certificate.to_der()?)?;
+                attestation_evidence_core::verify_snapshot(
+                    &evidence,
+                    nonce.as_bytes(),
+                    &certificate.to_der()?,
+                )?;
                 if evidence.ima_measurements != Self::read_ima_measurements()? {
                     return Err("IMA changed during quote collection".into());
                 }

@@ -2,16 +2,18 @@
 
 Earlier implementation runs remain in Git history. The 2026-11-23
 direct-endpoint Genoa run is recorded in
-[the acceptance record](acceptance-genoa-direct-20261123.md).
+[the acceptance record](acceptance-genoa-direct-20261123.md). The later
+[shared evidence core run](acceptance-shared-core-genoa-20261123.md) rechecked
+the isolated match/mismatch path and 27 replay cases after extraction.
 It tested an isolated local route and synthetic downstream responder, not public
 deployment or external inference.
 
 | Claim | Code / artifact | Retained test evidence | Status |
 |---|---|---|---|
-| Pinned AMD root, endorsement signatures/validity and VCEK chip/TCB/product correspondence | `lib/src/{crypto,formats,verify}.rs` | Rust tests, 27 replay cases and fresh Genoa evidence | implemented for Milan/Genoa; revocation is not automatic |
-| SNP signature, HCL variable-data binding and recovered vTPM AK | `lib/src/{crypto,formats,verify}.rs` | signed-report and HCL-key mutations; live Genoa run | implemented and tested |
+| Pinned AMD root, endorsement signatures/validity and VCEK chip/TCB/product correspondence | `lib/src/{crypto,verify}.rs`, `evidence-core/src/formats.rs` | Rust tests, 27 replay cases and fresh Genoa evidence | implemented for Milan/Genoa; revocation is not automatic |
+| SNP signature, HCL variable-data binding and recovered vTPM AK | `lib/src/{crypto,verify}.rs`, `evidence-core/src/formats.rs` | signed-report and HCL-key mutations; live Genoa run | implemented and tested |
 | Debug/migration/VMPL, launch measurement and minimum TCB policy | `lib/src/verify.rs`; application-owned `profiles/*.json` | policy mutations in replay and live Genoa enrollment | implemented and tested for enrolled baseline |
-| Signed quote, nonce/certificate/log binding and PCR mapping | `protocol/src/lib.rs`, `lib/src/formats.rs` | signed fixture vectors, challenge/quote/PCR mutations and fresh TPM quote | implemented and tested |
+| Signed quote, nonce/certificate/log binding and PCR mapping | `protocol/src/lib.rs`, `evidence-core/src/formats.rs` | signed fixture vectors, challenge/quote/PCR mutations and fresh TPM quote | implemented and tested |
 | Exact IMA reference, boot aggregate and PCR 10 | `lib/src/{reference,verify}.rs` | Rust tests, replay mutations and fresh match/mismatch | implemented for 45 enrolled boot/module entries |
 | Immutable reference content and locally selected identity | `lib/src/verify.rs`; application `demo/collection.py`, `scripts/enroll_reference.py` | commit/path/digest pinning, publisher verification and live Teraveri retrieval | implemented for approved local policy |
 | Typed evidence result and historical replay | `lib/src/result.rs`, `bindings/{python,wasm}/`, `client/`, result/archive schemas | Python API tests, 27 replay cases, seven-case CLI/Python/Chromium/Firefox parity | implemented; no admission claim in result |

@@ -1,10 +1,11 @@
-"""Guard normal verifier graphs: native fixtures and collector are separate."""
+"""Guard normal evidence-core and verifier graphs from native I/O crates."""
 
 import subprocess
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 for manifest, target in [
+    ("evidence-core/Cargo.toml", None),
     ("lib/Cargo.toml", None),
     ("bindings/wasm/Cargo.toml", "wasm32-unknown-unknown"),
 ]:

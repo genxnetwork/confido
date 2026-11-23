@@ -23,7 +23,8 @@ flowchart LR
 | Directory | Responsibility |
 |---|---|
 | [`protocol/`](protocol/README.md) | Wire v1 structures and binding transcript |
-| [`lib/`](lib/README.md) | Portable synchronous verifier, bounded binary parsers |
+| [`evidence-core/`](evidence-core/README.md) | Shared SNP/HCL/quote parsing and collected-snapshot consistency checks |
+| [`lib/`](lib/README.md) | Portable synchronous verifier, policy and reference appraisal |
 | [`bindings/python/`](bindings/python/README.md) | `confido-verifier` distribution / `confido_verifier` import |
 | [`bindings/wasm/`](bindings/wasm/README.md) | Same verifier compiled to WASM |
 | [`server/`](server/README.md) | Native TPM/IMA collector and `/tee-report` HTTP endpoint |
@@ -46,6 +47,7 @@ only in native verifier test fixtures; the collector and application transport
 have their own native dependencies.
 
 ```sh
+cargo test --locked --manifest-path evidence-core/Cargo.toml
 cargo test --locked --manifest-path lib/Cargo.toml
 cargo test --locked --manifest-path server/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml

@@ -42,6 +42,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "attestation-evidence-core"
+version = "0.2.0"
+dependencies = [
+ "base64",
+ "confido-protocol",
+ "ring",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -79,6 +90,7 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 name = "confido"
 version = "0.2.0"
 dependencies = [
+ "attestation-evidence-core",
  "base64",
  "confido-protocol",
  "hex",

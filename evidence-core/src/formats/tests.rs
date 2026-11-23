@@ -193,18 +193,7 @@ fn malformed_hcl_never_panics() {
 }
 
 #[test]
-fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
-    use openssl::{
-        ec::{EcGroup, EcKey},
-        ecdsa::EcdsaSig,
-        nid::Nid,
-    };
-    let group = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
-    let ec = EcKey::generate(&group).unwrap();
-    let key = PKey::from_ec_key(ec.clone()).unwrap();
-    // This local certificate tests report signature encoding, not AMD trust.
-    let cert_der = certificate(&key, "synthetic SNP signer").to_der().unwrap();
-    let cert = crate::crypto::cert(&cert_der).unwrap();
+fn snp_versions_preserve_fields_and_reject_unknown_layouts() {
     let mut b = vec![0; 1236];
     b[1224..1228].copy_from_slice(&2u32.to_le_bytes());
     b[1228..1232].copy_from_slice(&1u32.to_le_bytes());
@@ -218,12 +207,6 @@ fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
         b[32 + 80..32 + 144].fill(0x33);
         b[32 + 392] = 0x19;
         b[32 + 393] = 0x01;
-        let sig = EcdsaSig::sign(&openssl::sha::sha384(&b[32..32 + 672]), &ec).unwrap();
-        for (at, value) in [(672, sig.r()), (744, sig.s())] {
-            let mut le = value.to_vec_padded(48).unwrap();
-            le.reverse();
-            b[32 + at..32 + at + 48].copy_from_slice(&le);
-        }
         let snp = super::snp(&b).unwrap();
         assert_eq!(snp.tcb, [4, 0, 24, 219]);
         assert_eq!(snp.committed, snp.tcb);
@@ -234,15 +217,6 @@ fn snp_versions_preserve_signed_fields_and_reject_unknown_layouts() {
             snp.product_hint().unwrap(),
             if version == 2 { None } else { Some("Milan") }
         );
-        crate::crypto::snp_signature(&snp, &cert).unwrap();
-        // Version, established fields and v5's new fields are all signed.
-        for offset in [0, 80, 144, 384, 416, 480, 504, 512, 671, 672, 744] {
-            let mut changed = b.clone();
-            changed[32 + offset] ^= 1;
-            assert!(super::snp(&changed)
-                .and_then(|s| crate::crypto::snp_signature(&s, &cert))
-                .is_err());
-        }
     }
     for version in [0u32, 1, 4, 6, u32::MAX] {
         b[32..36].copy_from_slice(&version.to_le_bytes());
