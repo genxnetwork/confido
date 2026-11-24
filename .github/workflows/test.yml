@@ -2,7 +2,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: [master, revision/attestation-update]
+    branches: [master, main, revision/attestation-update]
 permissions:
   contents: read
 jobs:
@@ -45,23 +45,3 @@ jobs:
           . .venv/bin/activate
           python -m playwright install --with-deps chromium firefox
           python scripts/browser_checks.py
-  collector:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: confido
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: confido
-          persist-credentials: false
-      - name: Native collector prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config perl clang libclang-dev libtss2-dev
-          rustup toolchain install 1.98.0 --profile minimal
-          rustup default 1.98.0
-      - run: cargo test --locked --manifest-path server/Cargo.toml
-      - run: cargo build --locked --manifest-path server/Cargo.toml
-      - run: python3 -m unittest discover -s server/tests -p 'test_launcher.py' -v

@@ -1,28 +1,29 @@
 # Confido 0.2 revision in JAN
 
 The working branch is `revision/attestation-update` in JAN DIGITRUST. The target
-is a reproducible portable evidence verifier, with a compatible native collector
-at a shared checkpoint before extracting Attestor. Version 0.2.0 is a development
-target; it has not been released or validated for production deployment.
+is a reproducible portable evidence verifier. The compatible native collector
+lives in [JAN Attestor](https://github.com/jandigitrust/attestor), forked from a
+shared signed checkpoint. Version 0.2.0 is a development target; it has not
+been released or validated for production deployment.
 
-## Scope and next checkpoint
+## Scope and repository boundary
 
-The current tree combines the portable verifier, native collector and caller
-revisions at 0.2.0. The core, collector, CLI, installed Python wheel, WASM worker
-and package attribution need to agree at a reproducible checkpoint. The dated
-validation below identifies what has already been exercised and at which source
-revisions.
+The active Confido tree contains the portable verifier, CLI, Python binding,
+WASM worker and browser extension at 0.2.0. Attestor separately owns the native
+collector and `/tee-report`. The dated validation below identifies which
+pre-extraction source revisions were exercised; it does not validate the split.
 
-The pre-extraction checkpoint is now fixed by signed local commits: Confido
-`075364083ac982be1f38945a30b615d61a475f67`, confidential-ai-example
-`c174f34da57ca5823aa6b512c484dfd42d47d967`, and the published Evidence
-dependency `900d420b0928c4693e1143aa33a33ab670147e3c`. Create JAN Attestor
-from that Confido checkpoint with shared history. Confido and Attestor then need
-separate active source trees, build graphs, release workflows and acceptance
-checks. Propose the substantive verifier changes upstream to GENXT from JAN;
-continue collector development in JAN. The published research baseline remains
-fixed. The tracking issue and PR should state the final behavior, acceptance
-evidence and remaining limits.
+The pre-extraction checkpoint is fixed by signed Confido commit
+`89f2c288ca3cddeb5840f3b107b06d5568f2a81d`, following the source
+checkpoint `075364083ac982be1f38945a30b615d61a475f67`; the paired
+confidential-ai-example commit is `c174f34da57ca5823aa6b512c484dfd42d47d967`,
+and the published Evidence dependency is
+`900d420b0928c4693e1143aa33a33ab670147e3c`. Attestor starts from the
+signed Confido checkpoint with shared history. Confido and Attestor have
+separate active source trees, build graphs and release workflows. Their
+integration still needs fresh acceptance checks. Propose substantive verifier
+changes upstream to GENXT from JAN; continue collector development in JAN. The
+published research baseline remains fixed.
 
 ## Inputs and provenance
 
@@ -44,8 +45,8 @@ schema v2 have separate compatibility rules; see the [migration guide](migration
 | `evidence-protocol` Git crate | Shared evidence wire and binding types | Teraveri Evidence repository |
 | `evidence-core` Git crate | Shared bounded parsing and snapshot consistency checks | Teraveri Evidence repository |
 | `bindings/python/`, `bindings/wasm/` | Thin wrappers over the same verifier | Confido |
-| `server/` | Native SNP/vTPM/IMA collection and report endpoint | JAN Attestor |
-| `client/` | Evidence retrieval, offline verification and replay | Split caller/verification ownership during extraction |
+| [JAN Attestor](https://github.com/jandigitrust/attestor) | Native SNP/vTPM/IMA collection and report endpoint | Separate repository |
+| `client/` | Evidence retrieval, offline verification and replay | Confido caller |
 | `extension/` | Browser caller with local WASM verification | Confido consumer |
 
 The native chat transport belongs to `confidential-ai-example`. New integration
@@ -54,10 +55,10 @@ reports are not current acceptance evidence.
 
 The collector and verifier use two Git crates pinned to one published Evidence
 commit; no sibling checkout is required. The collector does not depend on the
-full Confido verifier. Keep the wire/binding contract tests when Attestor is
-extracted.
+full Confido verifier. The wire/binding contract tests remain with Evidence and
+its consumers.
 
-Docker inventory and dmesg are absent from the current collector path and are
+Docker inventory and dmesg are absent from the Attestor collector path and are
 not authenticated evidence in the supported profile. Any later Attestor
 diagnostic support needs an explicit access policy and a separate claim boundary.
 
@@ -72,7 +73,7 @@ diagnostic support needs an explicit access policy and a separate claim boundary
 - Binary packages retain Apache licensing and dependency attribution.
 - Hardware replay/live acceptance and downstream transport integration are
   recorded separately from unit tests. Unavailable checks remain explicit.
-- The extraction checkpoint is committed and reproducible before creating Attestor.
+- The split retains the shared signed checkpoint and independent repository tests.
 
 ## Dated validation
 
@@ -116,8 +117,8 @@ the automated Actions OIDC path remains pending. See the
 
 The signed checkpoint records the reviewed source and the Linux attribution
 archives. RPM creation and independent acceptance still require their own
-checks before publication. Extract Attestor with shared history from this
-checkpoint; a release tag and package publication are separate steps. The dated
+checks before publication. Attestor retains shared history from this checkpoint;
+a release tag and package publication are separate steps. The dated
 acceptance records identify the source fingerprints used in those runs and do
 not certify later executable edits.
 

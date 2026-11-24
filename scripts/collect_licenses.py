@@ -18,7 +18,6 @@ PROJECT_CRATES = {
     for name in (
         "lib",
         "client",
-        "server",
         "bindings/python",
         "bindings/wasm",
     )

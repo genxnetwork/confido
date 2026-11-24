@@ -19,12 +19,12 @@ deployment or external inference.
 | Typed evidence result and historical replay | `lib/src/result.rs`, `bindings/{python,wasm}/`, `client/`, result/archive schemas | Python API tests, 27 replay cases, seven-case CLI/Python/Chromium/Firefox parity | implemented; no admission claim in result |
 | Origin-scoped HTTPS and intended hostname | application `native_transport/`, `demo/admission.py` | transport tests and live shared-certificate/wrong-host rejection | implemented in cooperating native application |
 | Withhold credentials and application traffic until admission | application `demo/`, `confai-promter.py` | 40 application tests; live match sent one synthetic request, mismatch sent zero | implemented in cooperating native application |
-| Direct challenge-bound report endpoint | `server/src/main.rs`, `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; fresh Genoa run | implemented and locally accepted |
-| Bounded collection and retrieval | `server/src/main.rs`; application `demo/collection.py` | 7 server tests, 7 launcher tests, application retry/size tests | implemented; adversarial live IMA race not injected |
+| Direct challenge-bound report endpoint | Attestor `server/src/main.rs`; Confido `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; fresh Genoa run before split | implemented; post-split integration pending |
+| Bounded collection and retrieval | Attestor `server/src/main.rs`; application `demo/collection.py` | pre-split server/launcher tests and application retry/size tests | implemented; post-split integration and adversarial live IMA race pending |
 | Python, CLI and browser verifier parity | `bindings/`, `extension/`, `scripts/browser_checks.py` | seven current-hardware cases per runtime; installed Chromium MV3/CSP/asset checks | implemented; Safari runtime not accepted |
 | Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 Genoa replays, p95 2.85 ms in the latest local run; network excluded | target met for this local workload only |
 | Frozen container on the direct endpoint | application Docker build and runtime manifest | current Genoa match/mismatch in both installed wheel and rebuilt local image; image digest in acceptance record | implemented and locally accepted |
-| Public 0.2.0 deployment promotion | application-owned `deploy/genxt-demo/` and preflight | current run used isolated localhost listeners | pending public configuration review and promotion |
+| Public 0.2.0 deployment promotion | Flint-owned Nginx routing; Attestor-owned collector unit | current run used isolated localhost listeners | pending public configuration review and promotion |
 | TLS session binding / relay resistance | no binder | none | unsupported |
 | Full application/model/GPU measurement or external inference validation | current IMA log lacks this coverage | enrolled log: one boot aggregate + 44 kernel modules; downstream synthetic | unsupported |
 | Server-enforced capabilities / continuous trust epochs / restoration | roadmap | none | planned |

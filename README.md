@@ -29,16 +29,15 @@ flowchart LR
 | [`lib/`](lib/README.md) | Portable synchronous verifier, policy and reference appraisal |
 | [`bindings/python/`](bindings/python/README.md) | `confido-verifier` distribution / `confido_verifier` import |
 | [`bindings/wasm/`](bindings/wasm/README.md) | Same verifier compiled to WASM |
-| [`server/`](server/README.md) | Native TPM/IMA collector and `/tee-report` HTTP endpoint |
 | [`client/`](client/README.md) | HTTP collection, explicit verification and historical replay |
 | [`extension/`](extension/README.md) | Local WASM worker, policy import, archive replay, permitted live retrieval |
 
 The chat application's native TLS transport lives in the sibling
 `confidential-ai-example/native_transport`, independently of this library.
 Build and acceptance helpers are indexed in [`scripts/`](scripts/README.md).
-The collector accepts a fresh challenge at `POST /tee-report`; `HEAD /tee-report`
-returns 204 for a credentialless TLS peer check. Callers select the HTTPS origin
-and verifier policy locally. The report endpoint does not choose trust anchors.
+[JAN Attestor](https://github.com/jandigitrust/attestor) owns native collection
+and the challenge-bound `/tee-report` endpoint. Callers select the HTTPS origin
+and verifier policy locally; Attestor does not choose trust anchors.
 
 ## Build and test
 
@@ -48,12 +47,11 @@ directly from the public Teraveri Git repository at commit
 needed. Each Confido package has its own lockfile and pins that same source.
 The verifier uses `ring` and a bounded X.509 profile; its runtime requires neither
 OpenSSL nor TPM2-TSS. `ring` compiles portable C with clang for WASM. OpenSSL is used
-only in native verifier test fixtures; the collector and application transport
-have their own native dependencies.
+only in native verifier test fixtures. Attestor and application transport have
+their own native dependencies.
 
 ```sh
 cargo test --locked --manifest-path lib/Cargo.toml
-cargo test --locked --manifest-path server/Cargo.toml
 cargo build --locked --manifest-path client/Cargo.toml
 python3 -m venv .venv
 . .venv/bin/activate
@@ -61,26 +59,15 @@ python -m pip install 'maturin==1.15.0' jsonschema
 make -C bindings/python install PYTHON=python
 python -m unittest discover -s lib/tests -v
 python -m unittest discover -s tests -v
-python -m unittest discover -s server/tests -v
 ```
 
 The Evidence repository runs its own workspace tests in CI; Confido's locked
 builds test the imported crates through their consumers.
 
-Collector prerequisites on Ubuntu: `build-essential pkg-config perl clang
-libclang-dev libtss2-dev`; native test/transport builds compile vendored OpenSSL.
+Native test fixtures compile vendored OpenSSL. Attestor documents its separate
+TPM2-TSS build prerequisites.
 Python wheels built here target CPython 3.10/Linux x86_64. Other ABI targets need
 separate builds and acceptance testing.
-
-### Collector launcher and HTTPS certificate
-
-`server/run.sh` defaults to `/etc/confido` when that deployment directory exists;
-otherwise it uses `/tmp/confido` for local development. Override with its second
-argument or `CONFIDO_CERTS_DIR`. The collector and Nginx must use the same leaf
-certificate and key. Cached `CA:TRUE` certificates are rejected at startup.
-The launcher validates certificate configuration before stopping an existing
-collector, including one managed by systemd. Generated development certificates
-explicitly contain `CA:FALSE`; deployed certificates are never silently replaced.
 
 ## Python API
 
@@ -152,7 +139,8 @@ and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Origin and licence
 
-Confido began as [GENXT's attested TLS prototype](https://github.com/genxnetwork/confido).
+Confido began as
+[GENXT's attested TLS prototype](https://github.com/elixir-cloud-aai/generic-issues/issues/17).
 The [licensing issue](https://github.com/genxnetwork/confido/issues/8) records its
 move to open development and the plan for [JAN DIGITRUST](https://github.com/jandigitrust/confido)
 to develop the verifier for contribution upstream. Project-authored material is

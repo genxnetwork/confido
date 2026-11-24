@@ -19,7 +19,7 @@ python3 extension/build.py --browser chromium
 python3 extension/build.py --browser firefox
 python3 extension/build.py --browser safari
 # Optional GENXT live-demo build, using application-owned host configuration:
-python3 extension/build.py --browser chromium --origins-config ../confidential-ai-example/deploy/genxt-demo/extension-origins.json
+python3 extension/build.py --browser chromium --origins-config ../confidential-ai-example/profiles/extension-origins.json
 ```
 
 Run from the repository root with clang installed. Outputs are under

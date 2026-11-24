@@ -15,7 +15,6 @@ target/
 __pycache__/
 *.py[cod]
 
-server/nvtrust
 **/*.log
 
 # Private, generated demonstration evidence and frozen runtime archives
