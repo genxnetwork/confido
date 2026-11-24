@@ -1,42 +1,18 @@
 [package]
-name = "confido"
-version = "0.0.1"
-edition = "2021"
 license = "Apache-2.0"
-
-[lib]
+repository = "https://github.com/jandigitrust/confido"
 name = "confido"
-path = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+version = "0.2.0"
+edition = "2021"
+description = "Deterministic local evidence verification"
 [dependencies]
-az-snp-vtpm = { path = "../../azure-cvm-tooling/az-cvm-vtpm/az-snp-vtpm", features = ["verifier"] }
+evidence-core = { version = "=0.2.0", git = "https://github.com/teraveri/evidence", rev = "900d420b0928c4693e1143aa33a33ab670147e3c" }
+evidence-protocol = { version = "=0.2.0", git = "https://github.com/teraveri/evidence", rev = "900d420b0928c4693e1143aa33a33ab670147e3c" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.13"
+hex = "0.4"
+ring = { version = "0.17.14", default-features = false, features = ["alloc"] }
+x509-parser = { version = "=0.16.0", features = ["verify"] }
+[dev-dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
-serde = "1.0"
-serde_json = "1.0"
-rand = "0.8.4"
-base64 = "0.13.0"
-env_logger = "0.8"
-log = "0.4"
-#reqwest = { version = "0.12.4", features = ["json", "native-tls", "blocking"] }
-reqwest = { version = "0.11", features = ["json", "native-tls"] }
-pyo3 = { version = "0.20.0", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.20.0", features = ["tokio"] }
-tokio = { version = "1", features = ["full"] }
-serde_bytes = "0.11.15"
-serde_with = "1.11.0"
-wasm-bindgen = "0.2.92"
-wasm-bindgen-futures = "0.4.42"
-getrandom = { version = "0.2.15", features = ["js"] }
-hex = "0.4.3"
-ring = "0.17.8"
-rust-crypto = "0.2.36"
-byteorder = "1.4.3"
-anyhow = "1.0"
-
-#[features]
-#default = ["extension-module"]
-#extension-module = ["pyo3/extension-module"]
-
