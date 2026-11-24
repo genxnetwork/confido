@@ -1,8 +1,8 @@
 # Confido 0.2 revision in JAN
 
-The working branch is `revision/attestation-update` in JAN DIGITRUST. The target
-is a reproducible portable evidence verifier. The compatible native collector
-lives in [JAN Attestor](https://github.com/jandigitrust/attestor), forked from a
+The 0.2 revision is integrated in JAN DIGITRUST's `main`. Its target is a
+reproducible portable evidence verifier. The compatible native collector lives
+in [JAN Attestor](https://github.com/jandigitrust/attestor), forked from a
 shared signed checkpoint. Version 0.2.0 is a development target; it has not
 been released or validated for production deployment.
 
@@ -21,15 +21,16 @@ and the published Evidence dependency is
 `900d420b0928c4693e1143aa33a33ab670147e3c`. Attestor starts from the
 signed Confido checkpoint with shared history. Confido and Attestor have
 separate active source trees, build graphs and release workflows. Their
-integration still needs fresh acceptance checks. Propose substantive verifier
-changes upstream to GENXT from JAN; continue collector development in JAN. The
-published research baseline remains fixed.
+integration passed the isolated post-split Genoa checks recorded below; public
+deployment remains pending. Propose substantive verifier changes upstream to
+GENXT from JAN; continue collector development in JAN. The published research
+baseline remains fixed.
 
 ## Inputs and provenance
 
 | Input | Commit | Treatment |
 |---|---|---|
-| Published attestation revision | `28471a04c4af23a4765c4584757685ba56245664` | Direct ancestor of this branch |
+| Published attestation revision | `28471a04c4af23a4765c4584757685ba56245664` | Direct ancestor of `main` |
 | Licensed JAN/GENXT master | `1faf101bc5595699e2ad37828cad1692a2ae7d71` | Merged with licence packaging retained |
 | Local review series | `4406996`, `0c33604`, `f8a9b2f`, `e0061e0`, `1b33d6e` | Merged with original commit identities |
 | Original research baseline | `2112b49ed248ac40dcdb819b63ea9739d055d138` | Published as `archive/research-baseline` |
