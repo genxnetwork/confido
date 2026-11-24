@@ -157,3 +157,8 @@ The [licensing issue](https://github.com/genxnetwork/confido/issues/8) records i
 move to open development and the plan for [JAN DIGITRUST](https://github.com/jandigitrust/confido)
 to develop the verifier for contribution upstream. Project-authored material is
 licensed under [Apache-2.0](LICENSE); third-party material retains its original terms.
+
+## Related work
+
+Related work on formal security analysis and programmatic trust management is
+underway through the [GA4GH GIF TRE Open Suite](https://www.ga4gh.org/gif_project/tre-open-suite/).
