@@ -107,6 +107,12 @@ replay and seven-case CLI/Python/Chromium/Firefox parity. The source trees
 still had uncommitted edits, so this is an artifact-identified local result,
 not yet a signed, clean release checkpoint.
 
+The [post-split Genoa run](revision/acceptance-post-split-genoa-20261124.md)
+then checked separate, signed Confido and Attestor commits with the client-only
+example and freshly rebuilt installed wheels. Match/mismatch, hostname and
+origin rejection, and credential withholding passed on isolated listeners.
+Container and browser acceptance were not repeated after the split.
+
 The isolated run used a synthetic downstream responder. Its 45 IMA entries
 cover a boot aggregate and 44 kernel modules, not application, model or GPU
 state. Public deployment, external inference, Safari runtime and independent

@@ -1,8 +1,10 @@
 # Claim → code → test matrix
 
-The [latest local review run](acceptance-genoa-review-20261124.md) rechecked
-fresh Genoa match/mismatch, container, 27-case replay and browser parity with
-the published Evidence dependency. Earlier [direct-endpoint](acceptance-genoa-direct-20261123.md)
+The [post-split local run](acceptance-post-split-genoa-20261124.md) rechecked
+Genoa match/mismatch with separate JAN Confido and Attestor trees and the
+client-only example. The [earlier full local review](acceptance-genoa-review-20261124.md)
+checked container, 27-case replay and browser parity against its own source
+state. Earlier [direct-endpoint](acceptance-genoa-direct-20261123.md)
 and [shared-core](acceptance-shared-core-genoa-20261123.md) records identify
 their own source and artifacts.
 It tested an isolated local route and synthetic downstream responder, not public
@@ -19,8 +21,8 @@ deployment or external inference.
 | Typed evidence result and historical replay | `lib/src/result.rs`, `bindings/{python,wasm}/`, `client/`, result/archive schemas | Python API tests, 27 replay cases, seven-case CLI/Python/Chromium/Firefox parity | implemented; no admission claim in result |
 | Origin-scoped HTTPS and intended hostname | application `native_transport/`, `demo/admission.py` | transport tests and live shared-certificate/wrong-host rejection | implemented in cooperating native application |
 | Withhold credentials and application traffic until admission | application `demo/`, `confai-promter.py` | 40 application tests; live match sent one synthetic request, mismatch sent zero | implemented in cooperating native application |
-| Direct challenge-bound report endpoint | Attestor `server/src/main.rs`; Confido `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; fresh Genoa run before split | implemented; post-split integration pending |
-| Bounded collection and retrieval | Attestor `server/src/main.rs`; application `demo/collection.py` | pre-split server/launcher tests and application retry/size tests | implemented; post-split integration and adversarial live IMA race pending |
+| Direct challenge-bound report endpoint | Attestor `server/src/main.rs`; Confido `client/src/main.rs`; application `demo/collection.py`; extension | POST nonce/no-store and credentialless HEAD; post-split Genoa match/mismatch | implemented; isolated post-split integration passed |
+| Bounded collection and retrieval | Attestor `server/src/main.rs`; application `demo/collection.py` | post-split collector/launcher tests, application retry/size tests and local Genoa run | implemented; adversarial live IMA race pending |
 | Python, CLI and browser verifier parity | `bindings/`, `extension/`, `scripts/browser_checks.py` | seven current-hardware cases per runtime; installed Chromium MV3/CSP/asset checks | implemented; Safari runtime not accepted |
 | Local appraisal under provisional 3-second target | installed Python wheel with local inputs | 30 Genoa replays, p95 2.85 ms in the latest local run; network excluded | target met for this local workload only |
 | Frozen container on the direct endpoint | application Docker build and runtime manifest | current Genoa match/mismatch in both installed wheel and rebuilt local image; image digest in acceptance record | implemented and locally accepted |
